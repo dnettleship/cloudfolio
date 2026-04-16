@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cloudfolio — Stock Tracker</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f4f5f7;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 20px 40px;
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+    header h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.5px; }
+    header span { font-size: 0.9rem; color: #8892a4; }
+
+    main {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 28px 32px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 20px;
+    }
+
+    .row { display: flex; gap: 16px; flex-wrap: wrap; }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label { font-size: 0.8rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; }
+    .field input {
+      padding: 9px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      width: 140px;
+      transition: border-color 0.15s;
+    }
+    .field input:focus { outline: none; border-color: #3b82f6; }
+
+    #ticker-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+
+    .ticker-row { display: flex; align-items: center; gap: 8px; }
+    .ticker-row input {
+      padding: 9px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      width: 160px;
+      text-transform: uppercase;
+      transition: border-color 0.15s;
+    }
+    .ticker-row input:focus { outline: none; border-color: #3b82f6; }
+    .ticker-row input::placeholder { text-transform: none; color: #9ca3af; }
+
+    .btn-remove {
+      background: none;
+      border: none;
+      color: #9ca3af;
+      cursor: pointer;
+      font-size: 1.2rem;
+      line-height: 1;
+      padding: 4px;
+      border-radius: 4px;
+      transition: color 0.15s;
+    }
+    .btn-remove:hover { color: #ef4444; }
+
+    .btn-add {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: 1px dashed #d1d5db;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 0.875rem;
+      color: #6b7280;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-add:hover { border-color: #3b82f6; color: #3b82f6; }
+
+    .btn-generate {
+      background: #1a1a2e;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 14px 32px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+      align-self: flex-start;
+    }
+    .btn-generate:hover:not(:disabled) { background: #2d2d4e; }
+    .btn-generate:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    #results { display: none; flex-direction: column; gap: 28px; }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+    }
+
+    .stat {
+      background: #f9fafb;
+      border-radius: 10px;
+      padding: 16px 18px;
+    }
+    .stat-label { font-size: 0.75rem; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-value { font-size: 1.5rem; font-weight: 700; margin-top: 4px; }
+    .stat-value.pos { color: #16a34a; }
+    .stat-value.neg { color: #dc2626; }
+    .stat-value.neu { color: #1a1a2e; }
+
+    #chart-img { width: 100%; border-radius: 8px; }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    thead th {
+      text-align: right;
+      padding: 10px 14px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 2px solid #f3f4f6;
+    }
+    thead th:first-child { text-align: left; }
+    tbody tr { border-bottom: 1px solid #f3f4f6; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #f9fafb; }
+    tbody td { padding: 11px 14px; text-align: right; }
+    tbody td:first-child { text-align: left; font-weight: 600; }
+    .positive { color: #16a34a; }
+    .negative { color: #dc2626; }
+
+    .spinner {
+      display: none;
+      width: 20px; height: 20px;
+      border: 3px solid #e5e7eb;
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin-left: 10px;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #error-msg {
+      display: none;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #dc2626;
+      border-radius: 8px;
+      padding: 14px 18px;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Cloudfolio</h1>
+  <span>Stock basket tracker</span>
+</header>
+
+<main>
+  <div class="card">
+    <h2>Configuration</h2>
+    <div class="row" style="margin-bottom:24px;">
+      <div class="field">
+        <label>Index (benchmark)</label>
+        <input type="text" id="index-input" value="VWRA.L" placeholder="e.g. VWRA.L" />
+      </div>
+      <div class="field">
+        <label>Lookback (days)</label>
+        <input type="number" id="days-input" value="30" min="7" max="365" />
+      </div>
+    </div>
+
+    <h2>Basket</h2>
+    <div id="ticker-list"></div>
+    <button class="btn-add" onclick="addTicker()">+ Add ticker</button>
+  </div>
+
+  <div>
+    <button class="btn-generate" id="generate-btn" onclick="generateReport()">
+      Generate report
+      <span class="spinner" id="spinner"></span>
+    </button>
+  </div>
+
+  <div id="error-msg"></div>
+
+  <div id="results">
+    <div class="card">
+      <h2>Summary</h2>
+      <div class="summary-grid" id="summary-grid"></div>
+    </div>
+
+    <div class="card">
+      <h2>Performance chart</h2>
+      <img id="chart-img" alt="Performance chart" />
+    </div>
+
+    <div class="card">
+      <h2>Performance table</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Ticker</th>
+              <th>CCY</th>
+              <th>Start</th>
+              <th>End</th>
+              <th>Local return %</th>
+              <th>GBP return %</th>
+              <th>vs Index (pp)</th>
+              <th>Forex adj (pp)</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  const API_URL = "__API_URL__";
+
+  // Seed with default tickers
+  ["MSFT", "META", "AMZN"].forEach(t => addTicker(t));
+
+  function addTicker(value = "") {
+    const list = document.getElementById("ticker-list");
+    const row = document.createElement("div");
+    row.className = "ticker-row";
+    row.innerHTML = `
+      <input type="text" placeholder="e.g. AAPL or VWRA.L" value="${value}" oninput="this.value=this.value.toUpperCase()" />
+      <button class="btn-remove" onclick="this.parentElement.remove()" title="Remove">×</button>
+    `;
+    list.appendChild(row);
+    row.querySelector("input").focus();
+  }
+
+  function fmt(val, decimals = 2) {
+    if (val === null || val === undefined) return "—";
+    const n = parseFloat(val);
+    const s = n.toFixed(decimals);
+    return n >= 0 ? `+${s}` : s;
+  }
+
+  function colorClass(val) {
+    if (val === null || val === undefined) return "";
+    return parseFloat(val) >= 0 ? "positive" : "negative";
+  }
+
+  async function generateReport() {
+    const btn = document.getElementById("generate-btn");
+    const spinner = document.getElementById("spinner");
+    const errorDiv = document.getElementById("error-msg");
+    const results = document.getElementById("results");
+
+    const tickers = [...document.querySelectorAll(".ticker-row input")]
+      .map(i => i.value.trim().toUpperCase())
+      .filter(Boolean);
+    const index = document.getElementById("index-input").value.trim().toUpperCase();
+    const days = parseInt(document.getElementById("days-input").value);
+
+    if (!tickers.length) {
+      showError("Please add at least one ticker.");
+      return;
+    }
+
+    btn.disabled = true;
+    spinner.style.display = "inline-block";
+    errorDiv.style.display = "none";
+    results.style.display = "none";
+
+    try {
+      const res = await fetch(`${API_URL}/report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tickers, index, days }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+
+      renderSummary(data.summary);
+      renderChart(data.chart_base64);
+      renderTable(data.rows);
+      results.style.display = "flex";
+      results.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    } catch (err) {
+      showError(`Error: ${err.message}`);
+    } finally {
+      btn.disabled = false;
+      spinner.style.display = "none";
+    }
+  }
+
+  function showError(msg) {
+    const div = document.getElementById("error-msg");
+    div.textContent = msg;
+    div.style.display = "block";
+  }
+
+  function renderSummary(s) {
+    const basketPp = parseFloat(s.basket_vs_index_pp);
+    const basketReturn = parseFloat(s.basket_avg_return_gbp_pct);
+    const indexReturn = parseFloat(s.index_return_gbp_pct);
+    const fxChange = parseFloat(s.forex.change_pct);
+
+    document.getElementById("summary-grid").innerHTML = `
+      <div class="stat">
+        <div class="stat-label">Period</div>
+        <div class="stat-value neu" style="font-size:1rem;margin-top:6px;">${s.period.start}<br/>→ ${s.period.end}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Basket avg (GBP)</div>
+        <div class="stat-value ${basketReturn >= 0 ? "pos" : "neg"}">${fmt(basketReturn)}%</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Index return (GBP)</div>
+        <div class="stat-value ${indexReturn >= 0 ? "pos" : "neg"}">${fmt(indexReturn)}%</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Basket vs Index</div>
+        <div class="stat-value ${basketPp >= 0 ? "pos" : "neg"}">${fmt(basketPp)} pp</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">GBP/USD move</div>
+        <div class="stat-value ${fxChange >= 0 ? "pos" : "neg"}">${fmt(fxChange)}%</div>
+      </div>
+    `;
+  }
+
+  function renderChart(b64) {
+    document.getElementById("chart-img").src = `data:image/png;base64,${b64}`;
+  }
+
+  function renderTable(rows) {
+    const tbody = document.getElementById("table-body");
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td>${r.ticker}</td>
+        <td>${r.currency}</td>
+        <td>${r.start_price}</td>
+        <td>${r.end_price}</td>
+        <td class="${colorClass(r.return_local_pct)}">${fmt(r.return_local_pct)}%</td>
+        <td class="${colorClass(r.return_gbp_pct)}">${fmt(r.return_gbp_pct)}%</td>
+        <td class="${colorClass(r.vs_index_pp)}">${fmt(r.vs_index_pp)}</td>
+        <td class="${colorClass(r.forex_adjustment_pp)}">${fmt(r.forex_adjustment_pp)}</td>
+      </tr>
+    `).join("");
+  }
+</script>
+
+</body>
+</html>
