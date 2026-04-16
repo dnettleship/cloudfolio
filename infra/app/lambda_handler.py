@@ -132,6 +132,22 @@ def build_table(tickers: list, index: str, days: int) -> tuple[list, dict]:
     return rows, summary
 
 
+def _configure_xaxis(ax, days: int) -> None:
+    """Set x-axis tick density and date format based on the window length."""
+    if days <= 60:
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=max(1, days // 10)))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%d %b"))
+    elif days <= 360:
+        ax.xaxis.set_major_locator(mdates.WeekdayLocator(byweekday=0, interval=max(1, days // 70)))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%d %b"))
+    elif days <= 1095:
+        ax.xaxis.set_major_locator(mdates.MonthLocator(interval=max(1, days // 300)))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%b '%y"))
+    else:
+        ax.xaxis.set_major_locator(mdates.YearLocator())
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+
+
 def build_chart(tickers: list, index: str, days: int) -> str:
     end_date = date.today()
     start_date = end_date - timedelta(days=days)
@@ -165,8 +181,7 @@ def build_chart(tickers: list, index: str, days: int) -> str:
         fontsize=13, pad=12,
     )
     ax.set_ylabel("Indexed return (100 = start)", fontsize=11)
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%d %b"))
-    ax.xaxis.set_major_locator(mdates.WeekdayLocator(interval=1))
+    _configure_xaxis(ax, days)
     plt.xticks(rotation=30, ha="right")
     ax.legend(fontsize=10)
     ax.grid(axis="y", alpha=0.3)
@@ -198,7 +213,7 @@ def handler(event, context):
         body = json.loads(event.get("body") or "{}")
         tickers = [t.strip().upper() for t in body.get("tickers", []) if t.strip()]
         index = body.get("index", "VWRA.L").strip().upper()
-        days = int(body.get("days", 30))
+        days = min(int(body.get("days", 30)), 3650)
 
         if not tickers:
             return {

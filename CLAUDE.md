@@ -7,12 +7,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Local tracker
 
 ```bash
-python3 tracker/tracker.py --basket tech-us        # JSON summary to stdout
+python3 tracker/tracker.py --basket tech-us                  # JSON summary to stdout
 python3 tracker/tracker.py --basket commodities
 
-python3 tracker/chart.py --basket tech-us          # saves performance_chart_tech-us.png
-python3 tracker/chart.py --basket commodities
+python3 tracker/chart.py --basket tech-us                    # saves performance_chart_tech-us.png
+python3 tracker/chart.py --basket tech-us --days 365         # 1-year chart
 ```
+
+`--days` defaults to 30, max 3650.
 
 No test suite or linter is configured.
 

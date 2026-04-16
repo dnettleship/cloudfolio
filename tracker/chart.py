@@ -22,6 +22,7 @@ from datetime import date, timedelta
 INDEX = "VWRA.L"
 FOREX_PAIR = "GBPUSD=X"
 LOOKBACK_DAYS = 30
+MAX_DAYS = 3650
 BASKETS_FILE = pathlib.Path(__file__).parent / "baskets.json"
 
 PALETTE = [
@@ -64,19 +65,39 @@ def apply_forex(price_series: pd.Series, gbpusd: pd.Series) -> pd.Series:
     return price_series / fx
 
 
+def _configure_xaxis(ax, days: int) -> None:
+    """Set x-axis tick density and date format based on the window length."""
+    if days <= 60:
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=max(1, days // 10)))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%d %b"))
+    elif days <= 360:
+        ax.xaxis.set_major_locator(mdates.WeekdayLocator(byweekday=0, interval=max(1, days // 70)))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%d %b"))
+    elif days <= 1095:
+        ax.xaxis.set_major_locator(mdates.MonthLocator(interval=max(1, days // 300)))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%b '%y"))
+    else:
+        ax.xaxis.set_major_locator(mdates.YearLocator())
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+
+
 def main():
     parser = argparse.ArgumentParser(description="Chart basket performance vs VWRA.L")
     parser.add_argument("--basket", required=True, help="Basket ID from baskets.json")
+    parser.add_argument("--days", type=int, default=LOOKBACK_DAYS,
+                        help=f"Lookback window in days (default: {LOOKBACK_DAYS}, max: {MAX_DAYS})")
     args = parser.parse_args()
 
+    days = min(args.days, MAX_DAYS)
     basket = load_basket(args.basket)
     end_date = date.today()
-    start_date = end_date - timedelta(days=LOOKBACK_DAYS)
+    start_date = end_date - timedelta(days=days)
 
     symbols = [t["symbol"] for t in basket["tickers"]]
     currencies = {t["symbol"]: t["currency"] for t in basket["tickers"]}
 
     all_tickers = symbols + [INDEX, FOREX_PAIR]
+
     prices = fetch_closes(all_tickers, start_date, end_date)
     gbpusd = prices[FOREX_PAIR].dropna()
 
@@ -103,8 +124,7 @@ def main():
         pad=12,
     )
     ax.set_ylabel("Indexed return (100 = start)", fontsize=11)
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%d %b"))
-    ax.xaxis.set_major_locator(mdates.WeekdayLocator(interval=1))
+    _configure_xaxis(ax, days)
     plt.xticks(rotation=30, ha="right")
     ax.legend(fontsize=10)
     ax.grid(axis="y", alpha=0.3)
