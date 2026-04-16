@@ -1,0 +1,23 @@
+{
+  "baskets": [
+    {
+      "id": "tech-us",
+      "name": "US Tech",
+      "tickers": [
+        { "symbol": "MSFT", "currency": "USD" },
+        { "symbol": "META", "currency": "USD" },
+        { "symbol": "AMZN", "currency": "USD" }
+      ]
+    },
+    {
+      "id": "commodities",
+      "name": "Commodities & Resources",
+      "tickers": [
+        { "symbol": "LITG.L", "currency": "GBP" },
+        { "symbol": "COPX.L", "currency": "GBP" },
+        { "symbol": "SRUUF", "currency": "USD" },
+        { "symbol": "SGLN.L", "currency": "GBP" }
+      ]
+    }
+  ]
+}
