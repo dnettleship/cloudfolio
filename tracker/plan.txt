@@ -1,0 +1,15 @@
+I want to create a tool that tracks a basket of stocks against an index.
+
+Use python and yfinance https://ranaroussi.github.io/yfinance/ to get the data
+
+The purpose of this tool is to compare returns based on when deposits were made.
+Compare a chosen stock/basket of picks against the index (VWRA.L in this case)
+
+take in to account forex fluctuations (i.e. if the stock is denominated in dollars include the fluctuations in forex as part of the overall movement vs the index)
+
+Start with 3 chosen stocks:
+MSFT
+META
+AMZN
+
+Start with a period of 1 month ago, compare returns over that period vs VWRA.L
