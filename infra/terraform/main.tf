@@ -79,11 +79,21 @@ resource "aws_apigatewayv2_route" "report" {
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
-# OPTIONS /report must be routed to Lambda so it can respond to CORS preflight.
-# Without this, browsers' preflight requests get a 403 before the POST is sent.
 resource "aws_apigatewayv2_route" "report_options" {
   api_id    = aws_apigatewayv2_api.app.id
   route_key = "OPTIONS /report"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "dcf" {
+  api_id    = aws_apigatewayv2_api.app.id
+  route_key = "POST /dcf"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "dcf_options" {
+  api_id    = aws_apigatewayv2_api.app.id
+  route_key = "OPTIONS /dcf"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 

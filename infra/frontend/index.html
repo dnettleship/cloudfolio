@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cloudfolio — Stock Tracker</title>
+  <title>Cloudfolio</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -25,14 +25,41 @@
     header h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.5px; }
     header span { font-size: 0.9rem; color: #8892a4; }
 
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid #e5e7eb;
+      background: #fff;
+      padding: 0 32px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .tab-btn {
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      padding: 16px 20px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #6b7280;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+      letter-spacing: 0.01em;
+    }
+    .tab-btn:hover { color: #1a1a2e; }
+    .tab-btn.active { color: #1a1a2e; border-bottom-color: #1a1a2e; }
+
     main {
-      max-width: 900px;
-      margin: 40px auto;
+      max-width: 960px;
+      margin: 36px auto;
       padding: 0 20px;
       display: flex;
       flex-direction: column;
       gap: 28px;
     }
+
+    .section { display: flex; flex-direction: column; gap: 28px; }
 
     .card {
       background: #fff;
@@ -42,29 +69,31 @@
     }
 
     .card h2 {
-      font-size: 1rem;
+      font-size: 0.75rem;
       font-weight: 600;
       color: #6b7280;
       text-transform: uppercase;
       letter-spacing: 0.06em;
-      margin-bottom: 20px;
+      margin-bottom: 18px;
     }
+    .card h2.mt { margin-top: 24px; }
 
     .row { display: flex; gap: 16px; flex-wrap: wrap; }
 
     .field { display: flex; flex-direction: column; gap: 6px; }
-    .field label { font-size: 0.8rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; }
+    .field label { font-size: 0.75rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; }
     .field input {
       padding: 9px 12px;
       border: 1px solid #d1d5db;
       border-radius: 8px;
       font-size: 0.95rem;
-      width: 140px;
+      width: 150px;
       transition: border-color 0.15s;
     }
     .field input:focus { outline: none; border-color: #3b82f6; }
+    .field input::placeholder { color: #9ca3af; }
 
-    #ticker-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+    .ticker-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
 
     .ticker-row { display: flex; align-items: center; gap: 8px; }
     .ticker-row input {
@@ -118,42 +147,66 @@
       cursor: pointer;
       transition: background 0.15s;
       align-self: flex-start;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
     }
     .btn-generate:hover:not(:disabled) { background: #2d2d4e; }
     .btn-generate:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    #results { display: none; flex-direction: column; gap: 28px; }
+    .spinner {
+      display: none;
+      width: 18px; height: 18px;
+      border: 3px solid rgba(255,255,255,0.35);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 16px;
+    .error-msg {
+      display: none;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #dc2626;
+      border-radius: 8px;
+      padding: 14px 18px;
+      font-size: 0.9rem;
     }
 
+    /* ── Summary stats ── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 14px;
+    }
     .stat {
       background: #f9fafb;
       border-radius: 10px;
-      padding: 16px 18px;
+      padding: 14px 16px;
     }
-    .stat-label { font-size: 0.75rem; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
-    .stat-value { font-size: 1.5rem; font-weight: 700; margin-top: 4px; }
+    .stat-label { font-size: 0.72rem; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-value { font-size: 1.4rem; font-weight: 700; margin-top: 4px; }
     .stat-value.pos { color: #16a34a; }
     .stat-value.neg { color: #dc2626; }
     .stat-value.neu { color: #1a1a2e; }
 
     #chart-img { width: 100%; border-radius: 8px; }
 
+    /* ── Tracker table ── */
     .table-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
     thead th {
       text-align: right;
       padding: 10px 14px;
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       font-weight: 600;
       color: #6b7280;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       border-bottom: 2px solid #f3f4f6;
+      white-space: nowrap;
     }
     thead th:first-child { text-align: left; }
     tbody tr { border-bottom: 1px solid #f3f4f6; }
@@ -164,25 +217,83 @@
     .positive { color: #16a34a; }
     .negative { color: #dc2626; }
 
-    .spinner {
-      display: none;
-      width: 20px; height: 20px;
-      border: 3px solid #e5e7eb;
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      margin-left: 10px;
-      vertical-align: middle;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    /* ── DCF result cards ── */
+    .dcf-card { display: flex; flex-direction: column; gap: 20px; }
 
-    #error-msg {
-      display: none;
+    .dcf-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .dcf-symbol { font-size: 1.25rem; font-weight: 700; margin-right: 10px; }
+    .dcf-name { font-size: 0.95rem; color: #6b7280; }
+    .dcf-price { font-size: 1.1rem; font-weight: 600; color: #374151; white-space: nowrap; }
+
+    .dcf-metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 600px) { .dcf-metrics-grid { grid-template-columns: 1fr; } }
+
+    .metrics-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 10px;
+    }
+
+    .metrics-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    .metrics-table td { padding: 5px 0; }
+    .metrics-table td:first-child { color: #6b7280; }
+    .metrics-table td:last-child { text-align: right; font-weight: 500; }
+    .metrics-table tr { border-bottom: 1px solid #f9fafb; }
+    .metrics-table tr:last-child { border-bottom: none; }
+
+    /* ── Sensitivity table ── */
+    .sens-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .sens-table th, .sens-table td { padding: 8px 12px; text-align: center; }
+    .sens-table th {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 2px solid #f3f4f6;
+    }
+    .sens-table th:first-child { text-align: left; }
+    .sens-table td:first-child { text-align: left; font-weight: 600; color: #374151; white-space: nowrap; }
+    .sens-table tbody tr { border-bottom: 1px solid #f9fafb; }
+    .sens-table tbody tr:last-child { border-bottom: none; }
+    .sens-cell-up { background: #f0fdf4; color: #15803d; font-weight: 600; border-radius: 4px; }
+    .sens-cell-dn { background: #fff7f7; color: #dc2626; font-weight: 600; border-radius: 4px; }
+    .sens-cell-base { outline: 2px solid #d1d5db; outline-offset: -2px; border-radius: 4px; }
+
+    .dcf-assumptions {
+      font-size: 0.8rem;
+      color: #9ca3af;
+      padding-top: 12px;
+      border-top: 1px solid #f3f4f6;
+      line-height: 1.5;
+    }
+
+    .dcf-na-msg {
+      font-size: 0.9rem;
+      color: #6b7280;
+      font-style: italic;
+    }
+    .dcf-error-card {
       background: #fef2f2;
       border: 1px solid #fecaca;
+      border-radius: 12px;
+      padding: 20px 24px;
       color: #dc2626;
-      border-radius: 8px;
-      padding: 14px 18px;
       font-size: 0.9rem;
     }
   </style>
@@ -191,94 +302,159 @@
 
 <header>
   <h1>Cloudfolio</h1>
-  <span>Stock basket tracker</span>
 </header>
 
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('tracker')">Portfolio Tracker</button>
+  <button class="tab-btn" onclick="switchTab('dcf')">DCF Analyser</button>
+</div>
+
 <main>
-  <div class="card">
-    <h2>Configuration</h2>
-    <div class="row" style="margin-bottom:24px;">
-      <div class="field">
-        <label>Index (benchmark)</label>
-        <input type="text" id="index-input" value="VWRA.L" placeholder="e.g. VWRA.L" />
+
+  <!-- ══ TRACKER SECTION ══ -->
+  <div id="tracker-section" class="section">
+    <div class="card">
+      <h2>Configuration</h2>
+      <div class="row" style="margin-bottom:24px;">
+        <div class="field">
+          <label>Index (benchmark)</label>
+          <input type="text" id="index-input" value="VWRA.L" placeholder="e.g. VWRA.L" />
+        </div>
+        <div class="field">
+          <label>Lookback (days)</label>
+          <input type="number" id="days-input" value="30" min="7" max="3650" />
+        </div>
       </div>
-      <div class="field">
-        <label>Lookback (days)</label>
-        <input type="number" id="days-input" value="30" min="7" max="365" />
-      </div>
+
+      <h2>Basket</h2>
+      <div class="ticker-list" id="tracker-ticker-list"></div>
+      <button class="btn-add" onclick="addTrackerTicker()">+ Add ticker</button>
     </div>
 
-    <h2>Basket</h2>
-    <div id="ticker-list"></div>
-    <button class="btn-add" onclick="addTicker()">+ Add ticker</button>
+    <div>
+      <button class="btn-generate" id="tracker-btn" onclick="generateReport()">
+        Generate report
+        <span class="spinner" id="tracker-spinner"></span>
+      </button>
+    </div>
+
+    <div class="error-msg" id="tracker-error"></div>
+
+    <div id="tracker-results" class="section" style="display:none;">
+      <div class="card">
+        <h2>Summary</h2>
+        <div class="summary-grid" id="summary-grid"></div>
+      </div>
+
+      <div class="card">
+        <h2>Performance chart</h2>
+        <img id="chart-img" alt="Performance chart" />
+      </div>
+
+      <div class="card">
+        <h2>Performance table</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Ticker</th>
+                <th>CCY</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Local return %</th>
+                <th>GBP return %</th>
+                <th>vs Index (pp)</th>
+                <th>Forex adj (pp)</th>
+              </tr>
+            </thead>
+            <tbody id="tracker-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div>
-    <button class="btn-generate" id="generate-btn" onclick="generateReport()">
-      Generate report
-      <span class="spinner" id="spinner"></span>
-    </button>
-  </div>
-
-  <div id="error-msg"></div>
-
-  <div id="results">
+  <!-- ══ DCF SECTION ══ -->
+  <div id="dcf-section" class="section" style="display:none;">
     <div class="card">
-      <h2>Summary</h2>
-      <div class="summary-grid" id="summary-grid"></div>
-    </div>
+      <h2>Tickers</h2>
+      <div class="ticker-list" id="dcf-ticker-list"></div>
+      <button class="btn-add" onclick="addDcfTicker()">+ Add ticker</button>
 
-    <div class="card">
-      <h2>Performance chart</h2>
-      <img id="chart-img" alt="Performance chart" />
-    </div>
-
-    <div class="card">
-      <h2>Performance table</h2>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Ticker</th>
-              <th>CCY</th>
-              <th>Start</th>
-              <th>End</th>
-              <th>Local return %</th>
-              <th>GBP return %</th>
-              <th>vs Index (pp)</th>
-              <th>Forex adj (pp)</th>
-            </tr>
-          </thead>
-          <tbody id="table-body"></tbody>
-        </table>
+      <h2 class="mt">Assumptions</h2>
+      <div class="row">
+        <div class="field">
+          <label>Discount rate %</label>
+          <input type="number" id="dcf-discount" value="10" min="1" max="30" step="0.5" style="width:130px;" />
+        </div>
+        <div class="field">
+          <label>Terminal growth %</label>
+          <input type="number" id="dcf-terminal" value="3" min="0" max="10" step="0.5" style="width:130px;" />
+        </div>
+        <div class="field">
+          <label>Growth override % <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+          <input type="number" id="dcf-growth" placeholder="auto-detect" min="-10" max="40" step="0.5" style="width:170px;" />
+        </div>
       </div>
     </div>
+
+    <div>
+      <button class="btn-generate" id="dcf-btn" onclick="runDcf()">
+        Analyse
+        <span class="spinner" id="dcf-spinner"></span>
+      </button>
+    </div>
+
+    <div class="error-msg" id="dcf-error"></div>
+
+    <div id="dcf-results" class="section"></div>
   </div>
+
 </main>
 
 <script>
   const API_URL = "__API_URL__";
 
-  // Seed with default tickers
-  ["MSFT", "META", "AMZN"].forEach(t => addTicker(t));
+  // ── Tab switching ───────────────────────────────────────────────────────────
 
-  function addTicker(value = "") {
-    const list = document.getElementById("ticker-list");
+  function switchTab(tab) {
+    document.getElementById("tracker-section").style.display = tab === "tracker" ? "" : "none";
+    document.getElementById("dcf-section").style.display    = tab === "dcf"     ? "" : "none";
+    document.querySelectorAll(".tab-btn").forEach((b, i) => {
+      b.classList.toggle("active", (i === 0) === (tab === "tracker"));
+    });
+  }
+
+  // ── Shared ticker helpers ───────────────────────────────────────────────────
+
+  function addTickerToList(listId, value = "") {
+    const list = document.getElementById(listId);
     const row = document.createElement("div");
     row.className = "ticker-row";
     row.innerHTML = `
-      <input type="text" placeholder="e.g. AAPL or VWRA.L" value="${value}" oninput="this.value=this.value.toUpperCase()" />
+      <input type="text" placeholder="e.g. AAPL or VWRA.L" value="${value}"
+             oninput="this.value=this.value.toUpperCase()" />
       <button class="btn-remove" onclick="this.parentElement.remove()" title="Remove">×</button>
     `;
     list.appendChild(row);
-    row.querySelector("input").focus();
+    if (!value) row.querySelector("input").focus();
   }
+
+  function addTrackerTicker(v) { addTickerToList("tracker-ticker-list", v); }
+  function addDcfTicker(v)     { addTickerToList("dcf-ticker-list", v); }
+
+  function getTickersFrom(listId) {
+    return [...document.querySelectorAll(`#${listId} input`)]
+      .map(i => i.value.trim().toUpperCase())
+      .filter(Boolean);
+  }
+
+  // ── Formatting ──────────────────────────────────────────────────────────────
 
   function fmt(val, decimals = 2) {
     if (val === null || val === undefined) return "—";
     const n = parseFloat(val);
-    const s = n.toFixed(decimals);
-    return n >= 0 ? `+${s}` : s;
+    return (n >= 0 ? "+" : "") + n.toFixed(decimals);
   }
 
   function colorClass(val) {
@@ -286,67 +462,71 @@
     return parseFloat(val) >= 0 ? "positive" : "negative";
   }
 
+  function fmtPct(v, d = 1) {
+    if (v === null || v === undefined) return "—";
+    return (v * 100).toFixed(d) + "%";
+  }
+
+  function fmtMul(v, d = 1) {
+    if (v === null || v === undefined) return "—";
+    return parseFloat(v).toFixed(d) + "×";
+  }
+
+  function fmtMoney(v, sym, d = 2) {
+    if (v === null || v === undefined) return "—";
+    return sym + parseFloat(v).toLocaleString("en-GB", { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+
+  function currencySym(c) {
+    return { USD: "$", GBP: "£", EUR: "€" }[c] || (c + " ");
+  }
+
+  // ── Tracker ─────────────────────────────────────────────────────────────────
+
+  ["MSFT", "META", "AMZN"].forEach(t => addTrackerTicker(t));
+
   async function generateReport() {
-    const btn = document.getElementById("generate-btn");
-    const spinner = document.getElementById("spinner");
-    const errorDiv = document.getElementById("error-msg");
-    const results = document.getElementById("results");
+    const btn     = document.getElementById("tracker-btn");
+    const spinner = document.getElementById("tracker-spinner");
+    const errorEl = document.getElementById("tracker-error");
+    const results = document.getElementById("tracker-results");
 
-    const tickers = [...document.querySelectorAll(".ticker-row input")]
-      .map(i => i.value.trim().toUpperCase())
-      .filter(Boolean);
-    const index = document.getElementById("index-input").value.trim().toUpperCase();
-    const days = parseInt(document.getElementById("days-input").value);
+    const tickers = getTickersFrom("tracker-ticker-list");
+    const index   = document.getElementById("index-input").value.trim().toUpperCase();
+    const days    = parseInt(document.getElementById("days-input").value);
 
-    if (!tickers.length) {
-      showError("Please add at least one ticker.");
-      return;
-    }
+    if (!tickers.length) { showError("tracker-error", "Please add at least one ticker."); return; }
 
-    btn.disabled = true;
-    spinner.style.display = "inline-block";
-    errorDiv.style.display = "none";
+    setLoading(btn, spinner, true);
+    errorEl.style.display = "none";
     results.style.display = "none";
 
     try {
-      const res = await fetch(`${API_URL}/report`, {
+      const res  = await fetch(`${API_URL}/report`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tickers, index, days }),
       });
-
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || `HTTP ${res.status}`);
-      }
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
       renderSummary(data.summary);
-      renderChart(data.chart_base64);
-      renderTable(data.rows);
-      results.style.display = "flex";
+      document.getElementById("chart-img").src = `data:image/png;base64,${data.chart_base64}`;
+      renderTrackerTable(data.rows);
+      results.style.display = "";
       results.scrollIntoView({ behavior: "smooth", block: "start" });
-
     } catch (err) {
-      showError(`Error: ${err.message}`);
+      showError("tracker-error", `Error: ${err.message}`);
     } finally {
-      btn.disabled = false;
-      spinner.style.display = "none";
+      setLoading(btn, spinner, false);
     }
   }
 
-  function showError(msg) {
-    const div = document.getElementById("error-msg");
-    div.textContent = msg;
-    div.style.display = "block";
-  }
-
   function renderSummary(s) {
-    const basketPp = parseFloat(s.basket_vs_index_pp);
-    const basketReturn = parseFloat(s.basket_avg_return_gbp_pct);
-    const indexReturn = parseFloat(s.index_return_gbp_pct);
-    const fxChange = parseFloat(s.forex.change_pct);
-
+    const br = parseFloat(s.basket_avg_return_gbp_pct);
+    const ir = parseFloat(s.index_return_gbp_pct);
+    const bp = parseFloat(s.basket_vs_index_pp);
+    const fx = parseFloat(s.forex.change_pct);
     document.getElementById("summary-grid").innerHTML = `
       <div class="stat">
         <div class="stat-label">Period</div>
@@ -354,30 +534,25 @@
       </div>
       <div class="stat">
         <div class="stat-label">Basket avg (GBP)</div>
-        <div class="stat-value ${basketReturn >= 0 ? "pos" : "neg"}">${fmt(basketReturn)}%</div>
+        <div class="stat-value ${br >= 0 ? "pos" : "neg"}">${fmt(br)}%</div>
       </div>
       <div class="stat">
         <div class="stat-label">Index return (GBP)</div>
-        <div class="stat-value ${indexReturn >= 0 ? "pos" : "neg"}">${fmt(indexReturn)}%</div>
+        <div class="stat-value ${ir >= 0 ? "pos" : "neg"}">${fmt(ir)}%</div>
       </div>
       <div class="stat">
         <div class="stat-label">Basket vs Index</div>
-        <div class="stat-value ${basketPp >= 0 ? "pos" : "neg"}">${fmt(basketPp)} pp</div>
+        <div class="stat-value ${bp >= 0 ? "pos" : "neg"}">${fmt(bp)} pp</div>
       </div>
       <div class="stat">
         <div class="stat-label">GBP/USD move</div>
-        <div class="stat-value ${fxChange >= 0 ? "pos" : "neg"}">${fmt(fxChange)}%</div>
+        <div class="stat-value ${fx >= 0 ? "pos" : "neg"}">${fmt(fx)}%</div>
       </div>
     `;
   }
 
-  function renderChart(b64) {
-    document.getElementById("chart-img").src = `data:image/png;base64,${b64}`;
-  }
-
-  function renderTable(rows) {
-    const tbody = document.getElementById("table-body");
-    tbody.innerHTML = rows.map(r => `
+  function renderTrackerTable(rows) {
+    document.getElementById("tracker-table-body").innerHTML = rows.map(r => `
       <tr>
         <td>${r.ticker}</td>
         <td>${r.currency}</td>
@@ -389,6 +564,190 @@
         <td class="${colorClass(r.forex_adjustment_pp)}">${fmt(r.forex_adjustment_pp)}</td>
       </tr>
     `).join("");
+  }
+
+  // ── DCF ─────────────────────────────────────────────────────────────────────
+
+  ["AAPL", "MSFT"].forEach(t => addDcfTicker(t));
+
+  async function runDcf() {
+    const btn     = document.getElementById("dcf-btn");
+    const spinner = document.getElementById("dcf-spinner");
+    const errorEl = document.getElementById("dcf-error");
+    const results = document.getElementById("dcf-results");
+
+    const tickers = getTickersFrom("dcf-ticker-list");
+    if (!tickers.length) { showError("dcf-error", "Please add at least one ticker."); return; }
+
+    const discountRaw  = parseFloat(document.getElementById("dcf-discount").value) / 100;
+    const terminalRaw  = parseFloat(document.getElementById("dcf-terminal").value) / 100;
+    const growthVal    = document.getElementById("dcf-growth").value.trim();
+    const growthRaw    = growthVal !== "" ? parseFloat(growthVal) / 100 : null;
+
+    setLoading(btn, spinner, true);
+    errorEl.style.display = "none";
+    results.innerHTML = "";
+
+    try {
+      const body = { tickers, discount_rate: discountRaw, terminal_growth: terminalRaw };
+      if (growthRaw !== null) body.growth_rate = growthRaw;
+
+      const res  = await fetch(`${API_URL}/dcf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+      data.results.forEach(r => results.appendChild(renderDcfCard(r)));
+      results.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (err) {
+      showError("dcf-error", `Error: ${err.message}`);
+    } finally {
+      setLoading(btn, spinner, false);
+    }
+  }
+
+  function renderDcfCard(r) {
+    if (r.error && !r.price) {
+      const div = document.createElement("div");
+      div.className = "dcf-error-card";
+      div.textContent = `${r.symbol}: ${r.error}`;
+      return div;
+    }
+
+    const card = document.createElement("div");
+    card.className = "card dcf-card";
+
+    const c = currencySym(r.currency || "USD");
+    const hasIv = r.intrinsic !== null && r.intrinsic > 0;
+    const upCls = hasIv ? (r.upside_pct >= 0 ? "pos" : "neg") : "neu";
+
+    // Header
+    card.innerHTML = `
+      <div class="dcf-header">
+        <div>
+          <span class="dcf-symbol">${r.symbol}</span>
+          <span class="dcf-name">${r.name || ""}</span>
+        </div>
+        <span class="dcf-price">${fmtMoney(r.price, c)}</span>
+      </div>
+
+      ${hasIv ? `
+        <div class="summary-grid">
+          <div class="stat">
+            <div class="stat-label">Intrinsic value</div>
+            <div class="stat-value neu">${fmtMoney(r.intrinsic, c)}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Upside / (downside)</div>
+            <div class="stat-value ${upCls}">${r.upside_pct >= 0 ? "+" : ""}${r.upside_pct.toFixed(1)}%</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Margin of safety</div>
+            <div class="stat-value ${r.margin_of_safety >= 0 ? "pos" : "neg"}">${r.margin_of_safety.toFixed(1)}%</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">FCF yield</div>
+            <div class="stat-value neu">${r.fcf_yield !== null ? r.fcf_yield.toFixed(2) + "%" : "—"}</div>
+          </div>
+        </div>
+      ` : `
+        <p class="dcf-na-msg">DCF not applicable — ${r.fcf_ttm !== null && r.fcf_ttm <= 0 ? "negative free cash flow" : "insufficient data"}.</p>
+      `}
+
+      <div class="dcf-metrics-grid">
+        <div>
+          <div class="metrics-label">Valuation</div>
+          <table class="metrics-table">
+            <tr><td>Trailing P/E</td><td>${fmtMul(r.trailing_pe)}</td></tr>
+            <tr><td>Forward P/E</td><td>${fmtMul(r.forward_pe)}</td></tr>
+            <tr><td>EV / EBITDA</td><td>${fmtMul(r.ev_ebitda)}</td></tr>
+            <tr><td>Price / FCF</td><td>${r.p_fcf !== null ? r.p_fcf.toFixed(1) + "×" : "—"}</td></tr>
+          </table>
+        </div>
+        <div>
+          <div class="metrics-label">Quality</div>
+          <table class="metrics-table">
+            <tr><td>Revenue growth</td><td>${fmtPct(r.revenue_growth)}</td></tr>
+            <tr><td>Gross margin</td><td>${fmtPct(r.gross_margins)}</td></tr>
+            <tr><td>Operating margin</td><td>${fmtPct(r.operating_margins)}</td></tr>
+            <tr><td>Net margin</td><td>${fmtPct(r.profit_margins)}</td></tr>
+            <tr><td>Return on equity</td><td>${fmtPct(r.return_on_equity)}</td></tr>
+            <tr><td>Debt / equity</td><td>${r.debt_to_equity !== null ? r.debt_to_equity.toFixed(2) + "×" : "—"}</td></tr>
+          </table>
+        </div>
+      </div>
+
+      ${hasIv && r.sensitivity ? renderSensTable(r, c) : ""}
+
+      ${hasIv ? `
+        <div class="dcf-assumptions">
+          FCF ${fmtBillions(r.fcf_ttm, c)} &nbsp;·&nbsp;
+          Stage 1 ${fmtPct(r.growth_s1)} &nbsp;·&nbsp;
+          Stage 2 ${fmtPct(r.growth_s2)} &nbsp;·&nbsp;
+          Terminal ${fmtPct(r.terminal_growth)} &nbsp;·&nbsp;
+          Discount ${fmtPct(r.discount_rate)} &nbsp;·&nbsp;
+          Growth source: ${r.growth_source} &nbsp;·&nbsp;
+          Terminal value ${r.tv_pct !== null ? r.tv_pct.toFixed(0) + "% of EV" : "—"}
+        </div>
+      ` : ""}
+    `;
+
+    return card;
+  }
+
+  function renderSensTable(r, c) {
+    const s = r.sensitivity;
+    const gs = s.growths;
+    const ds = s.discounts;
+    const price = r.price;
+    const labels = ["(bear)", "(base)", "(bull)"];
+
+    const headerCells = ds.map(d => `<th>${(d * 100).toFixed(0)}% disc</th>`).join("");
+    const rows = gs.map((g, gi) => {
+      const gKey = g.toFixed(4);
+      const cells = ds.map((d, di) => {
+        const dKey = d.toFixed(4);
+        const iv = s.table[gKey] ? s.table[gKey][dKey] : null;
+        const isBase = gi === 1 && di === 1;
+        const isUp   = iv !== null && iv > price;
+        const cls    = (isBase ? "sens-cell-base " : "") + (isUp ? "sens-cell-up" : "sens-cell-dn");
+        return `<td><span class="${cls}" style="display:inline-block;padding:3px 8px;">${iv !== null ? c + Math.round(iv).toLocaleString() : "—"}</span></td>`;
+      }).join("");
+      return `<tr><td>${(g * 100).toFixed(0)}% ${labels[gi]}</td>${cells}</tr>`;
+    }).join("");
+
+    return `
+      <div>
+        <div class="metrics-label">Sensitivity — intrinsic value (${c}/share)</div>
+        <div class="table-wrap">
+          <table class="sens-table">
+            <thead><tr><th>Growth ↓ / Disc →</th>${headerCells}</tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  function fmtBillions(v, sym) {
+    if (v === null || v === undefined) return "—";
+    return sym + (v / 1e9).toFixed(1) + "B";
+  }
+
+  // ── Shared utilities ────────────────────────────────────────────────────────
+
+  function setLoading(btn, spinner, loading) {
+    btn.disabled = loading;
+    spinner.style.display = loading ? "inline-block" : "none";
+  }
+
+  function showError(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.style.display = "block";
   }
 </script>
 
