@@ -25,31 +25,6 @@
     header h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.5px; }
     header span { font-size: 0.9rem; color: #8892a4; }
 
-    /* ── Tabs ── */
-    .tabs {
-      display: flex;
-      gap: 0;
-      border-bottom: 2px solid #e5e7eb;
-      background: #fff;
-      padding: 0 32px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-    }
-    .tab-btn {
-      background: none;
-      border: none;
-      border-bottom: 3px solid transparent;
-      margin-bottom: -2px;
-      padding: 16px 20px;
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: #6b7280;
-      cursor: pointer;
-      transition: color 0.15s, border-color 0.15s;
-      letter-spacing: 0.01em;
-    }
-    .tab-btn:hover { color: #1a1a2e; }
-    .tab-btn.active { color: #1a1a2e; border-bottom-color: #1a1a2e; }
-
     main {
       max-width: 960px;
       margin: 36px auto;
@@ -217,85 +192,6 @@
     .positive { color: #16a34a; }
     .negative { color: #dc2626; }
 
-    /* ── DCF result cards ── */
-    .dcf-card { display: flex; flex-direction: column; gap: 20px; }
-
-    .dcf-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      flex-wrap: wrap;
-      gap: 8px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid #f3f4f6;
-    }
-    .dcf-symbol { font-size: 1.25rem; font-weight: 700; margin-right: 10px; }
-    .dcf-name { font-size: 0.95rem; color: #6b7280; }
-    .dcf-price { font-size: 1.1rem; font-weight: 600; color: #374151; white-space: nowrap; }
-
-    .dcf-metrics-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-    }
-    @media (max-width: 600px) { .dcf-metrics-grid { grid-template-columns: 1fr; } }
-
-    .metrics-label {
-      font-size: 0.72rem;
-      font-weight: 600;
-      color: #6b7280;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      margin-bottom: 10px;
-    }
-
-    .metrics-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-    .metrics-table td { padding: 5px 0; }
-    .metrics-table td:first-child { color: #6b7280; }
-    .metrics-table td:last-child { text-align: right; font-weight: 500; }
-    .metrics-table tr { border-bottom: 1px solid #f9fafb; }
-    .metrics-table tr:last-child { border-bottom: none; }
-
-    /* ── Sensitivity table ── */
-    .sens-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-    .sens-table th, .sens-table td { padding: 8px 12px; text-align: center; }
-    .sens-table th {
-      font-size: 0.72rem;
-      font-weight: 600;
-      color: #6b7280;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      border-bottom: 2px solid #f3f4f6;
-    }
-    .sens-table th:first-child { text-align: left; }
-    .sens-table td:first-child { text-align: left; font-weight: 600; color: #374151; white-space: nowrap; }
-    .sens-table tbody tr { border-bottom: 1px solid #f9fafb; }
-    .sens-table tbody tr:last-child { border-bottom: none; }
-    .sens-cell-up { background: #f0fdf4; color: #15803d; font-weight: 600; border-radius: 4px; }
-    .sens-cell-dn { background: #fff7f7; color: #dc2626; font-weight: 600; border-radius: 4px; }
-    .sens-cell-base { outline: 2px solid #d1d5db; outline-offset: -2px; border-radius: 4px; }
-
-    .dcf-assumptions {
-      font-size: 0.8rem;
-      color: #9ca3af;
-      padding-top: 12px;
-      border-top: 1px solid #f3f4f6;
-      line-height: 1.5;
-    }
-
-    .dcf-na-msg {
-      font-size: 0.9rem;
-      color: #6b7280;
-      font-style: italic;
-    }
-    .dcf-error-card {
-      background: #fef2f2;
-      border: 1px solid #fecaca;
-      border-radius: 12px;
-      padding: 20px 24px;
-      color: #dc2626;
-      font-size: 0.9rem;
-    }
   </style>
 </head>
 <body>
@@ -303,11 +199,6 @@
 <header>
   <h1>Cloudfolio</h1>
 </header>
-
-<div class="tabs">
-  <button class="tab-btn active" onclick="switchTab('tracker')">Portfolio Tracker</button>
-  <button class="tab-btn" onclick="switchTab('dcf')">DCF Analyser</button>
-</div>
 
 <main>
 
@@ -374,56 +265,10 @@
     </div>
   </div>
 
-  <!-- ══ DCF SECTION ══ -->
-  <div id="dcf-section" class="section" style="display:none;">
-    <div class="card">
-      <h2>Tickers</h2>
-      <div class="ticker-list" id="dcf-ticker-list"></div>
-      <button class="btn-add" onclick="addDcfTicker()">+ Add ticker</button>
-
-      <h2 class="mt">Assumptions</h2>
-      <div class="row">
-        <div class="field">
-          <label>Discount rate %</label>
-          <input type="number" id="dcf-discount" value="10" min="1" max="30" step="0.5" style="width:130px;" />
-        </div>
-        <div class="field">
-          <label>Terminal growth %</label>
-          <input type="number" id="dcf-terminal" value="3" min="0" max="10" step="0.5" style="width:130px;" />
-        </div>
-        <div class="field">
-          <label>Growth override % <span style="font-weight:400;text-transform:none;">(optional)</span></label>
-          <input type="number" id="dcf-growth" placeholder="auto-detect" min="-10" max="40" step="0.5" style="width:170px;" />
-        </div>
-      </div>
-    </div>
-
-    <div>
-      <button class="btn-generate" id="dcf-btn" onclick="runDcf()">
-        Analyse
-        <span class="spinner" id="dcf-spinner"></span>
-      </button>
-    </div>
-
-    <div class="error-msg" id="dcf-error"></div>
-
-    <div id="dcf-results" class="section"></div>
-  </div>
-
 </main>
 
 <script>
   const API_URL = "__API_URL__";
-
-  // ── Tab switching ───────────────────────────────────────────────────────────
-
-  function switchTab(tab) {
-    document.getElementById("tracker-section").style.display = tab === "tracker" ? "" : "none";
-    document.getElementById("dcf-section").style.display    = tab === "dcf"     ? "" : "none";
-    document.querySelectorAll(".tab-btn").forEach((b, i) => {
-      b.classList.toggle("active", (i === 0) === (tab === "tracker"));
-    });
-  }
 
   // ── Shared ticker helpers ───────────────────────────────────────────────────
 
@@ -441,7 +286,6 @@
   }
 
   function addTrackerTicker(v) { addTickerToList("tracker-ticker-list", v); }
-  function addDcfTicker(v)     { addTickerToList("dcf-ticker-list", v); }
 
   function getTickersFrom(listId) {
     return [...document.querySelectorAll(`#${listId} input`)]
@@ -460,25 +304,6 @@
   function colorClass(val) {
     if (val === null || val === undefined) return "";
     return parseFloat(val) >= 0 ? "positive" : "negative";
-  }
-
-  function fmtPct(v, d = 1) {
-    if (v === null || v === undefined) return "—";
-    return (v * 100).toFixed(d) + "%";
-  }
-
-  function fmtMul(v, d = 1) {
-    if (v === null || v === undefined) return "—";
-    return parseFloat(v).toFixed(d) + "×";
-  }
-
-  function fmtMoney(v, sym, d = 2) {
-    if (v === null || v === undefined) return "—";
-    return sym + parseFloat(v).toLocaleString("en-GB", { minimumFractionDigits: d, maximumFractionDigits: d });
-  }
-
-  function currencySym(c) {
-    return { USD: "$", GBP: "£", EUR: "€" }[c] || (c + " ");
   }
 
   // ── Tracker ─────────────────────────────────────────────────────────────────
@@ -564,177 +389,6 @@
         <td class="${colorClass(r.forex_adjustment_pp)}">${fmt(r.forex_adjustment_pp)}</td>
       </tr>
     `).join("");
-  }
-
-  // ── DCF ─────────────────────────────────────────────────────────────────────
-
-  ["AAPL", "MSFT"].forEach(t => addDcfTicker(t));
-
-  async function runDcf() {
-    const btn     = document.getElementById("dcf-btn");
-    const spinner = document.getElementById("dcf-spinner");
-    const errorEl = document.getElementById("dcf-error");
-    const results = document.getElementById("dcf-results");
-
-    const tickers = getTickersFrom("dcf-ticker-list");
-    if (!tickers.length) { showError("dcf-error", "Please add at least one ticker."); return; }
-
-    const discountRaw  = parseFloat(document.getElementById("dcf-discount").value) / 100;
-    const terminalRaw  = parseFloat(document.getElementById("dcf-terminal").value) / 100;
-    const growthVal    = document.getElementById("dcf-growth").value.trim();
-    const growthRaw    = growthVal !== "" ? parseFloat(growthVal) / 100 : null;
-
-    setLoading(btn, spinner, true);
-    errorEl.style.display = "none";
-    results.innerHTML = "";
-
-    try {
-      const body = { tickers, discount_rate: discountRaw, terminal_growth: terminalRaw };
-      if (growthRaw !== null) body.growth_rate = growthRaw;
-
-      const res  = await fetch(`${API_URL}/dcf`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-
-      data.results.forEach(r => results.appendChild(renderDcfCard(r)));
-      results.scrollIntoView({ behavior: "smooth", block: "start" });
-    } catch (err) {
-      showError("dcf-error", `Error: ${err.message}`);
-    } finally {
-      setLoading(btn, spinner, false);
-    }
-  }
-
-  function renderDcfCard(r) {
-    if (r.error && !r.price) {
-      const div = document.createElement("div");
-      div.className = "dcf-error-card";
-      div.textContent = `${r.symbol}: ${r.error}`;
-      return div;
-    }
-
-    const card = document.createElement("div");
-    card.className = "card dcf-card";
-
-    const c = currencySym(r.currency || "USD");
-    const hasIv = r.intrinsic !== null && r.intrinsic > 0;
-    const upCls = hasIv ? (r.upside_pct >= 0 ? "pos" : "neg") : "neu";
-
-    // Header
-    card.innerHTML = `
-      <div class="dcf-header">
-        <div>
-          <span class="dcf-symbol">${r.symbol}</span>
-          <span class="dcf-name">${r.name || ""}</span>
-        </div>
-        <span class="dcf-price">${fmtMoney(r.price, c)}</span>
-      </div>
-
-      ${hasIv ? `
-        <div class="summary-grid">
-          <div class="stat">
-            <div class="stat-label">Intrinsic value</div>
-            <div class="stat-value neu">${fmtMoney(r.intrinsic, c)}</div>
-          </div>
-          <div class="stat">
-            <div class="stat-label">Upside / (downside)</div>
-            <div class="stat-value ${upCls}">${r.upside_pct >= 0 ? "+" : ""}${r.upside_pct.toFixed(1)}%</div>
-          </div>
-          <div class="stat">
-            <div class="stat-label">Margin of safety</div>
-            <div class="stat-value ${r.margin_of_safety >= 0 ? "pos" : "neg"}">${r.margin_of_safety.toFixed(1)}%</div>
-          </div>
-          <div class="stat">
-            <div class="stat-label">FCF yield</div>
-            <div class="stat-value neu">${r.fcf_yield !== null ? r.fcf_yield.toFixed(2) + "%" : "—"}</div>
-          </div>
-        </div>
-      ` : `
-        <p class="dcf-na-msg">DCF not applicable — ${r.fcf_ttm !== null && r.fcf_ttm <= 0 ? "negative free cash flow" : "insufficient data"}.</p>
-      `}
-
-      <div class="dcf-metrics-grid">
-        <div>
-          <div class="metrics-label">Valuation</div>
-          <table class="metrics-table">
-            <tr><td>Trailing P/E</td><td>${fmtMul(r.trailing_pe)}</td></tr>
-            <tr><td>Forward P/E</td><td>${fmtMul(r.forward_pe)}</td></tr>
-            <tr><td>EV / EBITDA</td><td>${fmtMul(r.ev_ebitda)}</td></tr>
-            <tr><td>Price / FCF</td><td>${r.p_fcf !== null ? r.p_fcf.toFixed(1) + "×" : "—"}</td></tr>
-          </table>
-        </div>
-        <div>
-          <div class="metrics-label">Quality</div>
-          <table class="metrics-table">
-            <tr><td>Revenue growth</td><td>${fmtPct(r.revenue_growth)}</td></tr>
-            <tr><td>Gross margin</td><td>${fmtPct(r.gross_margins)}</td></tr>
-            <tr><td>Operating margin</td><td>${fmtPct(r.operating_margins)}</td></tr>
-            <tr><td>Net margin</td><td>${fmtPct(r.profit_margins)}</td></tr>
-            <tr><td>Return on equity</td><td>${fmtPct(r.return_on_equity)}</td></tr>
-            <tr><td>Debt / equity</td><td>${r.debt_to_equity !== null ? r.debt_to_equity.toFixed(2) + "×" : "—"}</td></tr>
-          </table>
-        </div>
-      </div>
-
-      ${hasIv && r.sensitivity ? renderSensTable(r, c) : ""}
-
-      ${hasIv ? `
-        <div class="dcf-assumptions">
-          FCF ${fmtBillions(r.fcf_ttm, c)} &nbsp;·&nbsp;
-          Stage 1 ${fmtPct(r.growth_s1)} &nbsp;·&nbsp;
-          Stage 2 ${fmtPct(r.growth_s2)} &nbsp;·&nbsp;
-          Terminal ${fmtPct(r.terminal_growth)} &nbsp;·&nbsp;
-          Discount ${fmtPct(r.discount_rate)} &nbsp;·&nbsp;
-          Growth source: ${r.growth_source} &nbsp;·&nbsp;
-          Terminal value ${r.tv_pct !== null ? r.tv_pct.toFixed(0) + "% of EV" : "—"}
-        </div>
-      ` : ""}
-    `;
-
-    return card;
-  }
-
-  function renderSensTable(r, c) {
-    const s = r.sensitivity;
-    const gs = s.growths;
-    const ds = s.discounts;
-    const price = r.price;
-    const labels = ["(bear)", "(base)", "(bull)"];
-
-    const headerCells = ds.map(d => `<th>${(d * 100).toFixed(0)}% disc</th>`).join("");
-    const rows = gs.map((g, gi) => {
-      const gKey = g.toFixed(4);
-      const cells = ds.map((d, di) => {
-        const dKey = d.toFixed(4);
-        const iv = s.table[gKey] ? s.table[gKey][dKey] : null;
-        const isBase = gi === 1 && di === 1;
-        const isUp   = iv !== null && iv > price;
-        const cls    = (isBase ? "sens-cell-base " : "") + (isUp ? "sens-cell-up" : "sens-cell-dn");
-        return `<td><span class="${cls}" style="display:inline-block;padding:3px 8px;">${iv !== null ? c + Math.round(iv).toLocaleString() : "—"}</span></td>`;
-      }).join("");
-      return `<tr><td>${(g * 100).toFixed(0)}% ${labels[gi]}</td>${cells}</tr>`;
-    }).join("");
-
-    return `
-      <div>
-        <div class="metrics-label">Sensitivity — intrinsic value (${c}/share)</div>
-        <div class="table-wrap">
-          <table class="sens-table">
-            <thead><tr><th>Growth ↓ / Disc →</th>${headerCells}</tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </div>
-      </div>
-    `;
-  }
-
-  function fmtBillions(v, sym) {
-    if (v === null || v === undefined) return "—";
-    return sym + (v / 1e9).toFixed(1) + "B";
   }
 
   // ── Shared utilities ────────────────────────────────────────────────────────
