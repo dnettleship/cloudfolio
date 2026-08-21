@@ -85,18 +85,6 @@ resource "aws_apigatewayv2_route" "report_options" {
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
-resource "aws_apigatewayv2_route" "dcf" {
-  api_id    = aws_apigatewayv2_api.app.id
-  route_key = "POST /dcf"
-  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
-}
-
-resource "aws_apigatewayv2_route" "dcf_options" {
-  api_id    = aws_apigatewayv2_api.app.id
-  route_key = "OPTIONS /dcf"
-  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
-}
-
 resource "aws_apigatewayv2_stage" "default" {
   api_id      = aws_apigatewayv2_api.app.id
   name        = "$default"

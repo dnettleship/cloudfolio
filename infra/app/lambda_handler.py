@@ -28,14 +28,6 @@ CORS_HEADERS = {
     "Content-Type": "application/json",
 }
 
-# ── DCF constants ─────────────────────────────────────────────────────────────
-
-DCF_STAGE1_YEARS = 5
-DCF_STAGE2_YEARS = 5
-DCF_GROWTH_CAP = 0.40
-DCF_GROWTH_FLOOR = -0.10
-
-
 # ── Tracker helpers ───────────────────────────────────────────────────────────
 
 def detect_currency(symbol: str) -> str:
@@ -205,167 +197,6 @@ def build_chart(tickers: list, index: str, days: int) -> str:
     return base64.b64encode(buf.read()).decode("utf-8")
 
 
-# ── DCF helpers ───────────────────────────────────────────────────────────────
-
-def _ttm_fcf(t: yf.Ticker) -> float | None:
-    """Sum 4 most-recent quarterly figures as a TTM fallback."""
-    try:
-        q = t.quarterly_cashflow
-        if q is None or q.empty or q.shape[1] < 4:
-            return None
-        if "Operating Cash Flow" not in q.index:
-            return None
-        op = float(q.loc["Operating Cash Flow"].iloc[:4].sum())
-        capex = float(q.loc["Capital Expenditure"].iloc[:4].sum()) if "Capital Expenditure" in q.index else 0.0
-        return op + capex  # capex is negative in yfinance convention
-    except Exception:
-        return None
-
-
-def _infer_growth(t: yf.Ticker, info: dict) -> tuple[float, str]:
-    """Return (growth_rate, source_label). Prefers analyst 5yr estimate."""
-    try:
-        ge = t.growth_estimates
-        if ge is not None and not ge.empty:
-            for col in ge.columns:
-                if "5" in str(col):
-                    series = ge[col].dropna()
-                    if not series.empty:
-                        val = float(series.iloc[0])
-                        if abs(val) <= DCF_GROWTH_CAP:
-                            return val, "analyst 5yr EPS estimate"
-    except Exception:
-        pass
-
-    g_earn = info.get("earningsGrowth")
-    g_rev = info.get("revenueGrowth")
-    if g_earn is not None:
-        return float(g_earn), "TTM earnings growth"
-    if g_rev is not None:
-        return float(g_rev), "TTM revenue growth"
-    return 0.10, "default (10%)"
-
-
-def _run_dcf(
-    fcf: float,
-    shares: float,
-    cash: float,
-    debt: float,
-    growth_s1: float,
-    discount_rate: float,
-    terminal_growth: float,
-) -> float:
-    """2-stage DCF. Returns intrinsic value per share."""
-    growth_s2 = max(terminal_growth, growth_s1 * 0.5)
-    growth_s2 = min(growth_s2, discount_rate - 0.01)
-    terminal_growth = min(terminal_growth, discount_rate - 0.01)
-
-    pv = 0.0
-    cf = fcf
-    for yr in range(1, DCF_STAGE1_YEARS + 1):
-        cf *= (1 + growth_s1)
-        pv += cf / (1 + discount_rate) ** yr
-
-    pv_s1 = pv
-    pv_s2 = 0.0
-    for yr in range(DCF_STAGE1_YEARS + 1, DCF_STAGE1_YEARS + DCF_STAGE2_YEARS + 1):
-        cf *= (1 + growth_s2)
-        disc = cf / (1 + discount_rate) ** yr
-        pv += disc
-        pv_s2 += disc
-
-    tv = cf * (1 + terminal_growth) / (discount_rate - terminal_growth)
-    pv_tv = tv / (1 + discount_rate) ** (DCF_STAGE1_YEARS + DCF_STAGE2_YEARS)
-    ev = pv_s1 + pv_s2 + pv_tv
-    equity = ev + cash - debt
-    return equity / shares, ev, pv_tv
-
-
-def _analyse_ticker(symbol: str, discount_rate: float, terminal_growth: float, growth_override) -> dict:
-    t = yf.Ticker(symbol)
-    info = t.info
-
-    price = info.get("currentPrice") or info.get("regularMarketPrice")
-    shares = info.get("sharesOutstanding") or info.get("impliedSharesOutstanding")
-    cash = info.get("totalCash") or 0
-    debt = info.get("totalDebt") or 0
-    fcf = info.get("freeCashflow") or _ttm_fcf(t)
-
-    if growth_override is not None:
-        growth = float(max(DCF_GROWTH_FLOOR, min(DCF_GROWTH_CAP, growth_override)))
-        growth_source = "user override"
-    else:
-        growth, growth_source = _infer_growth(t, info)
-        growth = float(max(DCF_GROWTH_FLOOR, min(DCF_GROWTH_CAP, growth)))
-
-    mc = info.get("marketCap")
-    de_raw = info.get("debtToEquity")  # yfinance returns as percentage (150 = 1.5×)
-
-    result = {
-        "symbol": symbol,
-        "name": info.get("longName") or info.get("shortName", symbol),
-        "currency": info.get("currency", "USD"),
-        "price": price,
-        "fcf_ttm": fcf,
-        "growth_s1": growth,
-        "growth_source": growth_source,
-        "discount_rate": discount_rate,
-        "terminal_growth": terminal_growth,
-        "market_cap": mc,
-        "trailing_pe": info.get("trailingPE"),
-        "forward_pe": info.get("forwardPE"),
-        "ev_ebitda": info.get("enterpriseToEbitda"),
-        "p_fcf": mc / fcf if (mc and fcf and fcf > 0) else None,
-        "fcf_yield": fcf / mc * 100 if (mc and fcf and fcf > 0) else None,
-        "revenue_growth": info.get("revenueGrowth"),
-        "gross_margins": info.get("grossMargins"),
-        "operating_margins": info.get("operatingMargins"),
-        "profit_margins": info.get("profitMargins"),
-        "return_on_equity": info.get("returnOnEquity"),
-        "debt_to_equity": de_raw / 100 if de_raw is not None else None,
-        "error": None,
-    }
-
-    if price and shares and fcf and fcf > 0:
-        intrinsic, ev, pv_tv = _run_dcf(fcf, shares, cash, debt, growth, discount_rate, terminal_growth)
-        growth_s2 = max(terminal_growth, growth * 0.5)
-        growth_s2 = min(growth_s2, discount_rate - 0.01)
-
-        gs = [max(DCF_GROWTH_FLOOR, growth * 0.6), growth, min(DCF_GROWTH_CAP, growth * 1.4)]
-        ds = [round(discount_rate - 0.01, 4), round(discount_rate, 4), round(discount_rate + 0.01, 4)]
-        sens_table = {}
-        for g in gs:
-            row = {}
-            for d in ds:
-                iv, _, _ = _run_dcf(fcf, shares, cash, debt, g, d, terminal_growth)
-                row[f"{d:.4f}"] = round(iv, 2)
-            sens_table[f"{g:.4f}"] = row
-
-        result.update({
-            "intrinsic": round(intrinsic, 2),
-            "upside_pct": round((intrinsic / price - 1) * 100, 1),
-            "margin_of_safety": round((1 - price / intrinsic) * 100, 1) if intrinsic > 0 else None,
-            "growth_s2": round(growth_s2, 4),
-            "tv_pct": round(pv_tv / ev * 100, 0) if ev > 0 else None,
-            "sensitivity": {
-                "growths": [round(g, 4) for g in gs],
-                "discounts": ds,
-                "table": sens_table,
-            },
-        })
-    else:
-        result.update({
-            "intrinsic": None,
-            "upside_pct": None,
-            "margin_of_safety": None,
-            "growth_s2": None,
-            "tv_pct": None,
-            "sensitivity": None,
-        })
-
-    return result
-
-
 # ── Route handlers ────────────────────────────────────────────────────────────
 
 def handle_report(body: dict) -> dict:
@@ -390,35 +221,6 @@ def handle_report(body: dict) -> dict:
     }
 
 
-def handle_dcf(body: dict) -> dict:
-    tickers = [t.strip().upper() for t in body.get("tickers", []) if t.strip()]
-    discount_rate = float(body.get("discount_rate", 0.10))
-    terminal_growth = float(body.get("terminal_growth", 0.03))
-    growth_override = body.get("growth_rate")
-    if growth_override is not None:
-        growth_override = float(growth_override)
-
-    if not tickers:
-        return {
-            "statusCode": 400,
-            "headers": CORS_HEADERS,
-            "body": json.dumps({"error": "At least one ticker is required"}),
-        }
-
-    results = []
-    for sym in tickers:
-        try:
-            results.append(_analyse_ticker(sym, discount_rate, terminal_growth, growth_override))
-        except Exception as e:
-            results.append({"symbol": sym, "error": str(e)})
-
-    return {
-        "statusCode": 200,
-        "headers": CORS_HEADERS,
-        "body": json.dumps({"results": results}),
-    }
-
-
 # ── Lambda entry point ────────────────────────────────────────────────────────
 
 def handler(event, context):
@@ -428,11 +230,6 @@ def handler(event, context):
 
     try:
         body = json.loads(event.get("body") or "{}")
-        path = event.get("rawPath", "/")
-
-        if path.rstrip("/").endswith("/dcf"):
-            return handle_dcf(body)
-
         return handle_report(body)
 
     except Exception as exc:
