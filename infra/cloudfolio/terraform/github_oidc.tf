@@ -67,6 +67,14 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
         Resource = "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.current.account_id}:function:${var.project}"
       },
       {
+        # Needed to resolve the OIDC provider data source by URL — this is an
+        # account-wide list action, IAM doesn't support resource scoping here.
+        Sid      = "OidcProviderLookup"
+        Effect   = "Allow"
+        Action   = ["iam:ListOpenIDConnectProviders", "iam:GetOpenIDConnectProvider"]
+        Resource = "*"
+      },
+      {
         Sid    = "LambdaExecutionRole"
         Effect = "Allow"
         Action = [
