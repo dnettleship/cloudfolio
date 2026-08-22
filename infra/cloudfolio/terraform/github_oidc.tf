@@ -86,6 +86,18 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
         Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.project}-lambda-role"
       },
       {
+        # Read-only on its own role/policy — enough for Terraform to refresh
+        # state on a routine apply. Deliberately excludes Put/Attach/Delete on
+        # itself: a CI role that can rewrite its own permissions is a
+        # privilege-escalation risk (a compromised push to main could grant
+        # itself broader access). Changes to this role's own policy go
+        # through a human running `terraform apply` locally instead.
+        Sid      = "SelfRoleReadOnly"
+        Effect   = "Allow"
+        Action   = ["iam:GetRole", "iam:GetRolePolicy", "iam:ListAttachedRolePolicies", "iam:ListRolePolicies"]
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.project}-github-actions"
+      },
+      {
         Sid      = "ApiGateway"
         Effect   = "Allow"
         Action   = ["apigateway:*"]
