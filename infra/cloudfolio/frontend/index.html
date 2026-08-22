@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cloudfolio</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%93%88</text></svg>" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -67,6 +68,16 @@
     }
     .field input:focus { outline: none; border-color: #3b82f6; }
     .field input::placeholder { color: #9ca3af; }
+    .field select {
+      padding: 9px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      width: 220px;
+      background: #fff;
+      transition: border-color 0.15s;
+    }
+    .field select:focus { outline: none; border-color: #3b82f6; }
 
     .ticker-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
 
@@ -218,6 +229,10 @@
       </div>
 
       <h2>Basket</h2>
+      <div class="field" style="margin-bottom:14px;">
+        <label>Preset</label>
+        <select id="basket-select" onchange="applyBasketPreset()"></select>
+      </div>
       <div class="ticker-list" id="tracker-ticker-list"></div>
       <button class="btn-add" onclick="addTrackerTicker()">+ Add ticker</button>
     </div>
@@ -269,6 +284,7 @@
 
 <script>
   const API_URL = "__API_URL__";
+  const BASKETS = __BASKETS_JSON__;
 
   // ── Shared ticker helpers ───────────────────────────────────────────────────
 
@@ -286,6 +302,22 @@
   }
 
   function addTrackerTicker(v) { addTickerToList("tracker-ticker-list", v); }
+
+  function populateBasketSelect() {
+    const sel = document.getElementById("basket-select");
+    sel.innerHTML = ['<option value="">Custom</option>']
+      .concat(BASKETS.map(b => `<option value="${b.id}">${b.name}</option>`))
+      .join("");
+  }
+
+  function applyBasketPreset() {
+    const id = document.getElementById("basket-select").value;
+    if (!id) return;
+    const basket = BASKETS.find(b => b.id === id);
+    if (!basket) return;
+    document.getElementById("tracker-ticker-list").innerHTML = "";
+    basket.tickers.forEach(t => addTrackerTicker(t.symbol));
+  }
 
   function getTickersFrom(listId) {
     return [...document.querySelectorAll(`#${listId} input`)]
@@ -308,6 +340,7 @@
 
   // ── Tracker ─────────────────────────────────────────────────────────────────
 
+  populateBasketSelect();
   ["MSFT", "META", "AMZN"].forEach(t => addTrackerTicker(t));
 
   async function generateReport() {

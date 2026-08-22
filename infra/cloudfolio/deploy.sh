@@ -7,14 +7,17 @@
 #   - Terraform >= 1.5 installed
 #
 # Usage:
-#   cd infra
+#   cd infra/cloudfolio
 #   ./deploy.sh
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TF_DIR="$SCRIPT_DIR/terraform"
+BACKEND_HCL="$SCRIPT_DIR/../backend.hcl"
+STATE_KEY="cloudfolio/terraform.tfstate"
+BASKETS_FILE="$REPO_ROOT/tracker/baskets.json"
 
 UPLOAD_ONLY=false
 if [[ "${1:-}" == "--upload-only" ]]; then
@@ -41,10 +44,12 @@ if [[ "$UPLOAD_ONLY" == true ]]; then
   trap 'rm -f "$FRONTEND_TMP"' EXIT
 
   python3 -c "
-import sys, pathlib
+import sys, pathlib, json
 src = pathlib.Path(sys.argv[1]).read_text()
-pathlib.Path(sys.argv[2]).write_text(src.replace('__API_URL__', sys.argv[3]))
-" "$SCRIPT_DIR/frontend/index.html" "$FRONTEND_TMP" "$API_URL"
+baskets = json.loads(pathlib.Path(sys.argv[4]).read_text())['baskets']
+out = src.replace('__API_URL__', sys.argv[3]).replace('__BASKETS_JSON__', json.dumps(baskets))
+pathlib.Path(sys.argv[2]).write_text(out)
+" "$SCRIPT_DIR/frontend/index.html" "$FRONTEND_TMP" "$API_URL" "$BASKETS_FILE"
 
   aws s3 cp "$FRONTEND_TMP" "s3://$SITE_BUCKET/index.html" \
     --content-type "text/html" \
@@ -61,7 +66,9 @@ fi
 echo ""
 echo "==> [1/4] Provisioning ECR repository..."
 cd "$TF_DIR"
-terraform init -reconfigure
+terraform init -reconfigure \
+  -backend-config="$BACKEND_HCL" \
+  -backend-config="key=$STATE_KEY"
 terraform apply -target=aws_ecr_repository.app -auto-approve
 
 ECR_URL=$(terraform output -raw ecr_repository_url)
@@ -119,10 +126,12 @@ echo ""
 echo "==> [4/4] Uploading frontend to s3://$SITE_BUCKET..."
 
 python3 -c "
-import sys, pathlib
+import sys, pathlib, json
 src = pathlib.Path(sys.argv[1]).read_text()
-pathlib.Path(sys.argv[2]).write_text(src.replace('__API_URL__', sys.argv[3]))
-" "$SCRIPT_DIR/frontend/index.html" "$FRONTEND_TMP" "$API_URL"
+baskets = json.loads(pathlib.Path(sys.argv[4]).read_text())['baskets']
+out = src.replace('__API_URL__', sys.argv[3]).replace('__BASKETS_JSON__', json.dumps(baskets))
+pathlib.Path(sys.argv[2]).write_text(out)
+" "$SCRIPT_DIR/frontend/index.html" "$FRONTEND_TMP" "$API_URL" "$BASKETS_FILE"
 
 aws s3 cp "$FRONTEND_TMP" "s3://$SITE_BUCKET/index.html" \
   --content-type "text/html" \
