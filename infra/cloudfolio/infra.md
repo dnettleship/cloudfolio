@@ -25,6 +25,13 @@ Browser
 | API | API Gateway HTTP API | `cloudfolio` |
 | Execution role | IAM Role | `cloudfolio-lambda-role` |
 | Terraform state | S3 | `terraform-state-304707804854` (shared bucket, key `cloudfolio/terraform.tfstate` — see [../README.md](../README.md)) |
+| CI deploy role | IAM Role | `cloudfolio-github-actions` |
+
+## CI/CD
+
+[`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml) runs `./deploy.sh` on every push to `main`. It authenticates to AWS via OIDC — GitHub issues a short-lived token that's exchanged for the `cloudfolio-github-actions` IAM role, so no AWS credentials are stored in GitHub. The role's trust policy restricts `AssumeRoleWithWebIdentity` to `repo:dnettleship/cloudfolio:ref:refs/heads/main` (defined in `terraform/github_oidc.tf`), and its permissions are scoped to the specific `cloudfolio` resources (ECR repo, Lambda function, lambda execution role, site bucket) rather than account-wide access.
+
+The GitHub OIDC provider itself (`token.actions.githubusercontent.com`) is a single resource per AWS account and pre-existed from another project, so it's referenced via a Terraform data source rather than managed here — see the comment in `github_oidc.tf` before adding a similar setup for another tool.
 
 ## Prerequisites
 
