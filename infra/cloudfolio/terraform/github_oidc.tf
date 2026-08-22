@@ -81,6 +81,7 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
           "iam:GetRole", "iam:CreateRole", "iam:DeleteRole", "iam:TagRole",
           "iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:GetRolePolicy",
           "iam:AttachRolePolicy", "iam:DetachRolePolicy", "iam:ListAttachedRolePolicies", "iam:ListRolePolicies",
+          "iam:ListInstanceProfilesForRole", # checked by the AWS provider before it will delete a role
           "iam:PassRole",
         ]
         Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.project}-lambda-role"
