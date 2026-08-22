@@ -24,7 +24,7 @@ Browser
 | Backend | Lambda (container image) | `cloudfolio` |
 | API | API Gateway HTTP API | `cloudfolio` |
 | Execution role | IAM Role | `cloudfolio-lambda-role` |
-| Terraform state | S3 | `terraform-state-304707804854` |
+| Terraform state | S3 | `terraform-state-304707804854` (shared bucket, key `cloudfolio/terraform.tfstate` — see [../README.md](../README.md)) |
 
 ## Prerequisites
 
@@ -36,7 +36,7 @@ Browser
 ## Deploy
 
 ```bash
-cd infra
+cd infra/cloudfolio
 ./deploy.sh
 ```
 
@@ -45,14 +45,14 @@ The script runs four steps:
 1. **Provision ECR** — `terraform apply -target=aws_ecr_repository.app`
 2. **Build & push image** — Docker build from repo root, push to ECR
 3. **Apply Terraform** — creates all remaining resources
-4. **Upload frontend** — injects the API Gateway URL into `index.html` and uploads to S3
+4. **Upload frontend** — injects the API Gateway URL and the baskets from [`tracker/baskets.json`](../../tracker/baskets.json) into `index.html` (as `__API_URL__` / `__BASKETS_JSON__` placeholders) and uploads to S3
 
 On completion the script prints the site URL and API endpoint.
 
 ## Destroy
 
 ```bash
-cd infra
+cd infra/cloudfolio
 ./destroy.sh
 ```
 
@@ -61,7 +61,7 @@ Prompts for confirmation, empties the S3 site bucket, then runs `terraform destr
 ## File structure
 
 ```
-infra/
+infra/cloudfolio/
   app/
     Dockerfile           Lambda container image (Python 3.12)
     lambda_handler.py    Backend: tracker + chart logic, API handler
@@ -69,13 +69,15 @@ infra/
   frontend/
     index.html           Single-page app (API URL injected at deploy time)
   terraform/
-    backend.tf           S3 remote state configuration
+    backend.tf           S3 remote state config (bucket/region from ../../backend.hcl)
     variables.tf         aws_region, project name
     main.tf              All AWS resource definitions
     outputs.tf           site_url, api_url, ecr_repository_url, site_bucket
   deploy.sh              End-to-end deploy script
   destroy.sh             Tear down all infrastructure
 ```
+
+This is one of possibly several tool subfolders under `infra/`, all sharing the state bucket defined in `infra/backend.hcl`. See [../README.md](../README.md) for the shared layout.
 
 ## API
 

@@ -11,13 +11,15 @@
 # The Terraform state bucket (terraform-state-304707804854) is NOT touched.
 #
 # Usage:
-#   cd infra
+#   cd infra/cloudfolio
 #   ./destroy.sh
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TF_DIR="$SCRIPT_DIR/terraform"
+BACKEND_HCL="$SCRIPT_DIR/../backend.hcl"
+STATE_KEY="cloudfolio/terraform.tfstate"
 
 # ── Confirmation prompt ───────────────────────────────────────────────────────
 
@@ -33,7 +35,9 @@ fi
 echo ""
 echo "==> [1/2] Emptying S3 site bucket..."
 cd "$TF_DIR"
-terraform init -reconfigure
+terraform init -reconfigure \
+  -backend-config="$BACKEND_HCL" \
+  -backend-config="key=$STATE_KEY"
 
 SITE_BUCKET=$(terraform output -raw site_bucket 2>/dev/null || echo "")
 if [[ -n "$SITE_BUCKET" ]]; then
