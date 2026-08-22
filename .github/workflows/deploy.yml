@@ -3,10 +3,26 @@ name: Deploy Cloudfolio
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "full = build/push image + apply Terraform + upload frontend. upload-only = re-upload frontend only (fast, skips Docker/Terraform)."
+        required: true
+        default: full
+        type: choice
+        options:
+          - full
+          - upload-only
 
 permissions:
   id-token: write
   contents: read
+
+env:
+  AWS_REGION: eu-west-2
+  PROJECT: cloudfolio
+  # workflow_dispatch inputs are empty on push events, so default to "full".
+  MODE: ${{ github.event.inputs.mode || 'full' }}
 
 jobs:
   deploy:
@@ -17,11 +33,72 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::304707804854:role/cloudfolio-github-actions
-          aws-region: eu-west-2
+          aws-region: ${{ env.AWS_REGION }}
 
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.6.5"
 
-      - name: Deploy
-        run: infra/cloudfolio/deploy.sh
+      - name: Terraform init
+        run: |
+          cd infra/cloudfolio/terraform
+          terraform init -reconfigure \
+            -backend-config="../../backend.hcl" \
+            -backend-config="key=$PROJECT/terraform.tfstate"
+
+      - name: Provision ECR repository
+        if: env.MODE == 'full'
+        run: |
+          cd infra/cloudfolio/terraform
+          terraform apply -target=aws_ecr_repository.app -auto-approve
+          echo "ECR_URL=$(terraform output -raw ecr_repository_url)" >> "$GITHUB_ENV"
+
+      - name: Build and push Docker image
+        if: env.MODE == 'full'
+        run: |
+          aws ecr get-login-password --region "$AWS_REGION" \
+            | docker login --username AWS --password-stdin "${ECR_URL%%/*}"
+          docker build --platform linux/amd64 -f infra/cloudfolio/app/Dockerfile -t "$ECR_URL:latest" .
+          docker push "$ECR_URL:latest"
+
+      - name: Update Lambda function code
+        if: env.MODE == 'full'
+        run: |
+          # Terraform won't force a new image pull when the tag (:latest)
+          # hasn't changed, even though the underlying image has.
+          aws lambda update-function-code \
+            --function-name "$PROJECT" \
+            --image-uri "$ECR_URL:latest" \
+            --region "$AWS_REGION"
+
+      - name: Apply Terraform (full)
+        if: env.MODE == 'full'
+        run: |
+          cd infra/cloudfolio/terraform
+          terraform apply -auto-approve
+
+      - name: Read Terraform outputs
+        run: |
+          cd infra/cloudfolio/terraform
+          echo "API_URL=$(terraform output -raw api_url)" >> "$GITHUB_ENV"
+          echo "SITE_BUCKET=$(terraform output -raw site_bucket)" >> "$GITHUB_ENV"
+          echo "SITE_URL=$(terraform output -raw site_url)" >> "$GITHUB_ENV"
+
+      - name: Upload frontend
+        run: |
+          python3 -c "
+          import pathlib, json, os
+          src = pathlib.Path('infra/cloudfolio/frontend/index.html').read_text()
+          baskets = json.loads(pathlib.Path('tracker/baskets.json').read_text())['baskets']
+          out = src.replace('__API_URL__', os.environ['API_URL']).replace('__BASKETS_JSON__', json.dumps(baskets))
+          pathlib.Path('/tmp/index.html').write_text(out)
+          "
+          aws s3 cp /tmp/index.html "s3://$SITE_BUCKET/index.html" \
+            --content-type "text/html" \
+            --cache-control "no-cache"
+
+      - name: Summary
+        run: |
+          echo "### Deployed ($MODE)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Site: $SITE_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "- API:  $API_URL/report" >> "$GITHUB_STEP_SUMMARY"
