@@ -20,19 +20,18 @@ No test suite or linter is configured.
 
 ### Infrastructure
 
-All infra commands must be run from the tool's subfolder under `infra/` (e.g. `infra/cloudfolio/`):
+There are no local deploy scripts — all deploy/destroy logic lives in GitHub Actions workflows and runs in CI, authenticated to AWS via OIDC (no stored credentials):
 
-```bash
-cd infra/cloudfolio && ./deploy.sh               # full provision + deploy
-cd infra/cloudfolio && ./deploy.sh --upload-only # re-upload frontend only (no Terraform/Docker)
-cd infra/cloudfolio && ./destroy.sh              # tear down all AWS resources
-```
+- **`.github/workflows/deploy.yml`** — runs automatically on every push to `main` (full build/push/apply/upload, no path filter — any push redeploys). Can also be triggered manually (Actions tab → Run workflow) with a `mode` choice: `full` or `upload-only` (skips Docker/Terraform, just re-uploads the frontend — useful after a `tracker/baskets.json`-only change).
+- **`.github/workflows/destroy.yml`** — manual only (`workflow_dispatch`), tears down all AWS resources for `cloudfolio` except the CI deploy role itself. No confirmation step — triggering the workflow run *is* the confirmation.
 
-`deploy.sh` requires AWS CLI configured, Docker running, and Terraform >= 1.5.
+To change infra locally without going through CI (e.g. to fix the CI role's own permissions — see below), run Terraform directly from `infra/cloudfolio/terraform/`, initializing with `-backend-config="../../backend.hcl" -backend-config="key=cloudfolio/terraform.tfstate"`. Requires AWS CLI configured, Docker running (for image builds), and Terraform >= 1.5.
+
+A broken commit on `main` goes live automatically — keep this in mind before pushing.
 
 ## Architecture
 
-`infra/` holds one subfolder per deployable tool (e.g. `infra/cloudfolio/`), each a self-contained Terraform root module with its own `deploy.sh`/`destroy.sh`. They share a Terraform state bucket defined in `infra/backend.hcl`, with each tool using its own state key — see `infra/README.md`. Currently `cloudfolio` is the only tool.
+`infra/` holds one subfolder per deployable tool (e.g. `infra/cloudfolio/`), each a self-contained Terraform root module. They share a Terraform state bucket defined in `infra/backend.hcl`, with each tool using its own state key — see `infra/README.md`. Currently `cloudfolio` is the only tool.
 
 There are two independent execution paths that share the same tracker logic:
 
@@ -42,7 +41,7 @@ There are two independent execution paths that share the same tracker logic:
 
 - `POST /report` — tracker: returns GBP-adjusted performance table, summary stats, and a base64-encoded PNG chart.
 
-The frontend is a single static HTML file (`infra/cloudfolio/frontend/index.html`) with all CSS and JS inline. Two placeholders are replaced at deploy time by `deploy.sh` before uploading to S3: `__API_URL__` (the live API Gateway URL) and `__BASKETS_JSON__` (the contents of `tracker/baskets.json`, which populates the basket preset dropdown — this is baked in at deploy time, so editing `baskets.json` requires a redeploy for the web UI to pick it up). The S3 bucket is private; access is via CloudFront (OAC) which serves the site over HTTPS at a `*.cloudfront.net` URL.
+The frontend is a single static HTML file (`infra/cloudfolio/frontend/index.html`) with all CSS and JS inline. Two placeholders are replaced at deploy time by the "Upload frontend" step in `deploy.yml` before uploading to S3: `__API_URL__` (the live API Gateway URL) and `__BASKETS_JSON__` (the contents of `tracker/baskets.json`, which populates the basket preset dropdown — this is baked in at deploy time, so editing `baskets.json` requires a redeploy for the web UI to pick it up, e.g. an `upload-only` manual run). The S3 bucket is private; access is via CloudFront (OAC) which serves the site over HTTPS at a `*.cloudfront.net` URL.
 
 **Key divergence between CLI and Lambda**: The CLI uses `baskets.json` for currency mapping (explicit `"currency"` field per ticker). The Lambda infers currency from the ticker symbol — `.L` suffix → GBP, everything else → USD. If you add non-US, non-London-listed tickers via the web UI, this heuristic may give wrong results.
 

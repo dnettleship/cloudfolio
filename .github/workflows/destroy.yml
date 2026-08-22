@@ -1,0 +1,56 @@
+name: Destroy Cloudfolio
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: eu-west-2
+  PROJECT: cloudfolio
+
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::304707804854:role/cloudfolio-github-actions
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.6.5"
+
+      - name: Terraform init
+        run: |
+          cd infra/cloudfolio/terraform
+          terraform init -reconfigure \
+            -backend-config="../../backend.hcl" \
+            -backend-config="key=$PROJECT/terraform.tfstate"
+
+      - name: Empty S3 site bucket
+        run: |
+          cd infra/cloudfolio/terraform
+          SITE_BUCKET=$(terraform output -raw site_bucket 2>/dev/null || echo "")
+          if [ -n "$SITE_BUCKET" ]; then
+            aws s3 rm "s3://$SITE_BUCKET" --recursive
+          fi
+
+      - name: Destroy infrastructure
+        run: |
+          cd infra/cloudfolio/terraform
+          # Exclude the GitHub Actions role/policy: this workflow runs *as*
+          # that role, so destroying it here would fail anyway (its policy
+          # deliberately can't modify/delete itself, see github_oidc.tf) and
+          # would strand future deploy/destroy runs with no way to
+          # authenticate. It can only be removed via a local terraform apply.
+          TARGETS=$(terraform state list | grep -v -E \
+            '^data\.|^aws_iam_role\.github_actions$|^aws_iam_role_policy\.github_actions_deploy$')
+          ARGS=()
+          for t in $TARGETS; do ARGS+=("-target=$t"); done
+          terraform destroy -auto-approve "${ARGS[@]}"

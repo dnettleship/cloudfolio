@@ -29,41 +29,34 @@ Browser
 
 ## CI/CD
 
-[`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml) runs `./deploy.sh` on every push to `main`. It authenticates to AWS via OIDC — GitHub issues a short-lived token that's exchanged for the `cloudfolio-github-actions` IAM role, so no AWS credentials are stored in GitHub. The role's trust policy restricts `AssumeRoleWithWebIdentity` to `repo:dnettleship/cloudfolio:ref:refs/heads/main` (defined in `terraform/github_oidc.tf`), and its permissions are scoped to the specific `cloudfolio` resources (ECR repo, Lambda function, lambda execution role, site bucket) rather than account-wide access.
+There's no local deploy/destroy script — both are GitHub Actions workflows, authenticated to AWS via OIDC (GitHub issues a short-lived token exchanged for the `cloudfolio-github-actions` IAM role; no AWS credentials are stored in GitHub). The role's trust policy restricts `AssumeRoleWithWebIdentity` to `repo:dnettleship/cloudfolio:ref:refs/heads/main` (defined in `terraform/github_oidc.tf`), and its permissions are scoped to the specific `cloudfolio` resources (ECR repo, Lambda function, lambda execution role, site bucket) rather than account-wide access.
 
 The GitHub OIDC provider itself (`token.actions.githubusercontent.com`) is a single resource per AWS account and pre-existed from another project, so it's referenced via a Terraform data source rather than managed here — see the comment in `github_oidc.tf` before adding a similar setup for another tool.
 
-## Prerequisites
+### Deploy
 
-- AWS CLI configured (`aws configure` or environment variables)
-- Docker running locally
-- Terraform >= 1.5
-- Python 3.x (used by `deploy.sh` for URL injection)
+[`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml) runs automatically on every push to `main` (no path filter — any push redeploys). It can also be triggered manually from the Actions tab (`workflow_dispatch`) with a `mode` input:
 
-## Deploy
+- **`full`** (default) — provisions ECR, builds & pushes the Docker image, force-updates the Lambda function code, applies the rest of Terraform, then uploads the frontend
+- **`upload-only`** — skips Docker/Terraform entirely and just re-injects `__API_URL__` / `__BASKETS_JSON__` into `index.html` and uploads to S3. Use this after a `tracker/baskets.json`-only change, since a full redeploy isn't needed for that.
 
-```bash
-cd infra/cloudfolio
-./deploy.sh
-```
+Both modes finish by injecting the API Gateway URL and the baskets from [`tracker/baskets.json`](../../tracker/baskets.json) into `index.html`. The run's summary page prints the site URL and API endpoint.
 
-The script runs four steps:
+### Destroy
 
-1. **Provision ECR** — `terraform apply -target=aws_ecr_repository.app`
-2. **Build & push image** — Docker build from repo root, push to ECR
-3. **Apply Terraform** — creates all remaining resources
-4. **Upload frontend** — injects the API Gateway URL and the baskets from [`tracker/baskets.json`](../../tracker/baskets.json) into `index.html` (as `__API_URL__` / `__BASKETS_JSON__` placeholders) and uploads to S3
+[`.github/workflows/destroy.yml`](../../.github/workflows/destroy.yml) is manual-only (`workflow_dispatch`, triggered from the Actions tab). It empties the S3 site bucket, then runs `terraform destroy` — targeted to exclude the `cloudfolio-github-actions` IAM role/policy, since destroying the role the workflow is currently running as would fail (and would strand future deploys). There's no typed confirmation step; triggering the workflow run is the confirmation. The Terraform *state bucket* is never touched by either workflow.
 
-On completion the script prints the site URL and API endpoint.
+### Local Terraform (bypassing CI)
 
-## Destroy
+Needed to fix the CI role's own permissions (its policy deliberately can't modify itself — see `github_oidc.tf`) or for anything else CI can't do. Requires AWS CLI configured, Docker running (image builds only), and Terraform >= 1.5:
 
 ```bash
-cd infra/cloudfolio
-./destroy.sh
+cd infra/cloudfolio/terraform
+terraform init -reconfigure \
+  -backend-config="../../backend.hcl" \
+  -backend-config="key=cloudfolio/terraform.tfstate"
+terraform apply
 ```
-
-Prompts for confirmation, empties the S3 site bucket, then runs `terraform destroy`. The Terraform state bucket is never touched.
 
 ## File structure
 
@@ -77,12 +70,13 @@ infra/cloudfolio/
     index.html           Single-page app (API URL injected at deploy time)
   terraform/
     backend.tf           S3 remote state config (bucket/region from ../../backend.hcl)
-    variables.tf         aws_region, project name
+    variables.tf         aws_region, project name, github_repo
     main.tf              All AWS resource definitions
-    outputs.tf           site_url, api_url, ecr_repository_url, site_bucket
-  deploy.sh              End-to-end deploy script
-  destroy.sh             Tear down all infrastructure
+    github_oidc.tf       GitHub Actions OIDC trust + CI deploy role/policy
+    outputs.tf           site_url, api_url, ecr_repository_url, site_bucket, github_actions_role_arn
 ```
+
+Deploy/destroy logic lives in [`.github/workflows/`](../../.github/workflows/) (`deploy.yml`, `destroy.yml`), not in this directory.
 
 This is one of possibly several tool subfolders under `infra/`, all sharing the state bucket defined in `infra/backend.hcl`. See [../README.md](../README.md) for the shared layout.
 
@@ -118,6 +112,7 @@ See [tracker/tracker.md](../tracker/tracker.md) for full field definitions.
 |---|---|---|
 | `aws_region` | `eu-west-2` | Region to deploy into |
 | `project` | `cloudfolio` | Prefix used for all resource names |
+| `github_repo` | `dnettleship/cloudfolio` | Repo allowed to assume the CI deploy role (`owner/repo`) |
 
 Override at plan/apply time:
 

@@ -9,7 +9,7 @@ tracker/        Stock basket tracker — local CLI (tracker.py, chart.py, basket
 infra/          AWS infrastructure, one subfolder per deployable tool
 ```
 
-Each tool's infra lives in its own `infra/<tool>/` subfolder — a self-contained Terraform setup with its own `deploy.sh`/`destroy.sh` — so tools can be deployed and torn down independently while sharing a common Terraform state bucket. See [infra/README.md](infra/README.md) for how that's organised.
+Each tool's infra lives in its own `infra/<tool>/` subfolder — a self-contained Terraform setup deployed and torn down via GitHub Actions workflows, independently of other tools, while sharing a common Terraform state bucket. See [infra/README.md](infra/README.md) for how that's organised.
 
 ## Tools
 
@@ -20,4 +20,4 @@ Each tool's infra lives in its own `infra/<tool>/` subfolder — a self-containe
 ## Requirements
 
 - Python 3.x for the local CLIs
-- AWS CLI, Docker, and Terraform >= 1.5 for deploying any tool's web app
+- Deploying a web app happens via GitHub Actions (push to `main`) — no local AWS/Docker/Terraform setup needed for routine deploys. They're only needed for one-off local Terraform work; see each tool's infra docs.
