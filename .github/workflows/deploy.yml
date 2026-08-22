@@ -65,11 +65,18 @@ jobs:
         if: env.MODE == 'full'
         run: |
           # Terraform won't force a new image pull when the tag (:latest)
-          # hasn't changed, even though the underlying image has.
-          aws lambda update-function-code \
-            --function-name "$PROJECT" \
-            --image-uri "$ECR_URL:latest" \
-            --region "$AWS_REGION"
+          # hasn't changed, even though the underlying image has. Only
+          # relevant for an existing function — on a first-ever deploy (or
+          # a redeploy after destroy.yml), the function doesn't exist yet;
+          # the Terraform apply below creates it with the just-pushed image.
+          if aws lambda get-function --function-name "$PROJECT" --region "$AWS_REGION" >/dev/null 2>&1; then
+            aws lambda update-function-code \
+              --function-name "$PROJECT" \
+              --image-uri "$ECR_URL:latest" \
+              --region "$AWS_REGION"
+          else
+            echo "Lambda function does not exist yet — Terraform will create it"
+          fi
 
       - name: Apply Terraform (full)
         if: env.MODE == 'full'
