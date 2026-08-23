@@ -1,0 +1,12 @@
+{
+  "tickers": [
+    "NVDA", "TSLA", "AMD", "META", "AMZN", "MSFT", "AAPL", "GOOGL",
+    "AVGO", "NFLX", "CRM", "MRVL", "CRWD", "PANW", "MU", "ARM", "PLTR"
+  ],
+  "benchmark": "SPY",
+  "vix_ticker": "^VIX",
+  "commodities": {
+    "oil": "CL=F",
+    "gold": "GC=F"
+  }
+}

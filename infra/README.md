@@ -1,6 +1,8 @@
 # Infrastructure
 
-Each tool that gets deployed to AWS lives in its own subfolder here (`infra/cloudfolio/`, and more to come). Every subfolder is a self-contained Terraform root module. There are no local deploy/destroy scripts — deploy and destroy both run as GitHub Actions workflows in [`.github/workflows/`](../.github/workflows/) (`deploy.yml`, `destroy.yml`), authenticated to AWS via OIDC.
+Each tool that gets deployed to AWS lives in its own subfolder here (`infra/cloudfolio/`, `infra/pre-session-scanner/`, and more to come). Every subfolder is a self-contained Terraform root module. `cloudfolio` deploys and destroys via GitHub Actions workflows in [`.github/workflows/`](../.github/workflows/) (`deploy.yml`, `destroy.yml`), authenticated to AWS via OIDC — see `infra/pre-session-scanner/infra.md` for why that one is currently deployed locally instead (no CI yet, by choice, to keep scope down while it's still Phase 1).
+
+`infra/cloudfolio/frontend/index.html` is the umbrella site — it now calls both tools' APIs (cloudfolio's own `/report`, and pre-session-scanner's separate `/scan`), even though each backend is deployed independently. Known inconsistency worth cleaning up later: the tracker's backend lives under `infra/cloudfolio/` rather than its own `infra/tracker/`, unlike pre-session-scanner which got a dedicated subfolder from the start.
 
 What's shared across all of them:
 

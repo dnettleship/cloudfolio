@@ -6,25 +6,58 @@
   <title>Cloudfolio</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%93%88</text></svg>" />
   <style>
+    :root {
+      --bg: #0e1015;
+      --bg-header: #05060a;
+      --card: #171a23;
+      --card-alt: #1e222d;
+      --border: #2a2e3a;
+      --text: #e5e7eb;
+      --text-dim: #8892a4;
+      --text-faint: #6b7280;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --pos: #34d399;
+      --neg: #f87171;
+      --error-bg: #2a1618;
+      --error-border: #5c2327;
+      --error-text: #fca5a5;
+    }
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #f4f5f7;
-      color: #1a1a2e;
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
     }
 
     header {
-      background: #1a1a2e;
+      background: var(--bg-header);
       color: #fff;
       padding: 20px 40px;
       display: flex;
       align-items: baseline;
-      gap: 12px;
+      gap: 24px;
+      border-bottom: 1px solid var(--border);
     }
     header h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.5px; }
-    header span { font-size: 0.9rem; color: #8892a4; }
+
+    nav { display: flex; gap: 4px; }
+    .nav-btn {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .nav-btn:hover { color: var(--text); background: var(--card); }
+    .nav-btn.active { color: #fff; background: var(--accent); }
 
     main {
       max-width: 960px;
@@ -38,16 +71,16 @@
     .section { display: flex; flex-direction: column; gap: 28px; }
 
     .card {
-      background: #fff;
+      background: var(--card);
+      border: 1px solid var(--border);
       border-radius: 12px;
       padding: 28px 32px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
     }
 
     .card h2 {
       font-size: 0.75rem;
       font-weight: 600;
-      color: #6b7280;
+      color: var(--text-dim);
       text-transform: uppercase;
       letter-spacing: 0.06em;
       margin-bottom: 18px;
@@ -57,47 +90,52 @@
     .row { display: flex; gap: 16px; flex-wrap: wrap; }
 
     .field { display: flex; flex-direction: column; gap: 6px; }
-    .field label { font-size: 0.75rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; }
+    .field label { font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
     .field input {
       padding: 9px 12px;
-      border: 1px solid #d1d5db;
+      background: var(--card-alt);
+      border: 1px solid var(--border);
       border-radius: 8px;
+      color: var(--text);
       font-size: 0.95rem;
       width: 150px;
       transition: border-color 0.15s;
     }
-    .field input:focus { outline: none; border-color: #3b82f6; }
-    .field input::placeholder { color: #9ca3af; }
+    .field input:focus { outline: none; border-color: var(--accent); }
+    .field input::placeholder { color: var(--text-faint); }
     .field select {
       padding: 9px 12px;
-      border: 1px solid #d1d5db;
+      background: var(--card-alt);
+      border: 1px solid var(--border);
       border-radius: 8px;
+      color: var(--text);
       font-size: 0.95rem;
       width: 220px;
-      background: #fff;
       transition: border-color 0.15s;
     }
-    .field select:focus { outline: none; border-color: #3b82f6; }
+    .field select:focus { outline: none; border-color: var(--accent); }
 
     .ticker-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
 
     .ticker-row { display: flex; align-items: center; gap: 8px; }
     .ticker-row input {
       padding: 9px 12px;
-      border: 1px solid #d1d5db;
+      background: var(--card-alt);
+      border: 1px solid var(--border);
       border-radius: 8px;
+      color: var(--text);
       font-size: 0.95rem;
       width: 160px;
       text-transform: uppercase;
       transition: border-color 0.15s;
     }
-    .ticker-row input:focus { outline: none; border-color: #3b82f6; }
-    .ticker-row input::placeholder { text-transform: none; color: #9ca3af; }
+    .ticker-row input:focus { outline: none; border-color: var(--accent); }
+    .ticker-row input::placeholder { text-transform: none; color: var(--text-faint); }
 
     .btn-remove {
       background: none;
       border: none;
-      color: #9ca3af;
+      color: var(--text-faint);
       cursor: pointer;
       font-size: 1.2rem;
       line-height: 1;
@@ -105,25 +143,25 @@
       border-radius: 4px;
       transition: color 0.15s;
     }
-    .btn-remove:hover { color: #ef4444; }
+    .btn-remove:hover { color: var(--neg); }
 
     .btn-add {
       display: inline-flex;
       align-items: center;
       gap: 6px;
       background: none;
-      border: 1px dashed #d1d5db;
+      border: 1px dashed var(--border);
       border-radius: 8px;
       padding: 8px 14px;
       font-size: 0.875rem;
-      color: #6b7280;
+      color: var(--text-dim);
       cursor: pointer;
       transition: all 0.15s;
     }
-    .btn-add:hover { border-color: #3b82f6; color: #3b82f6; }
+    .btn-add:hover { border-color: var(--accent); color: var(--accent); }
 
     .btn-generate {
-      background: #1a1a2e;
+      background: var(--accent);
       color: #fff;
       border: none;
       border-radius: 10px;
@@ -137,7 +175,7 @@
       align-items: center;
       gap: 10px;
     }
-    .btn-generate:hover:not(:disabled) { background: #2d2d4e; }
+    .btn-generate:hover:not(:disabled) { background: var(--accent-hover); }
     .btn-generate:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .spinner {
@@ -153,9 +191,9 @@
 
     .error-msg {
       display: none;
-      background: #fef2f2;
-      border: 1px solid #fecaca;
-      color: #dc2626;
+      background: var(--error-bg);
+      border: 1px solid var(--error-border);
+      color: var(--error-text);
       border-radius: 8px;
       padding: 14px 18px;
       font-size: 0.9rem;
@@ -168,19 +206,20 @@
       gap: 14px;
     }
     .stat {
-      background: #f9fafb;
+      background: var(--card-alt);
       border-radius: 10px;
       padding: 14px 16px;
     }
-    .stat-label { font-size: 0.72rem; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
-    .stat-value { font-size: 1.4rem; font-weight: 700; margin-top: 4px; }
-    .stat-value.pos { color: #16a34a; }
-    .stat-value.neg { color: #dc2626; }
-    .stat-value.neu { color: #1a1a2e; }
+    .stat-label { font-size: 0.72rem; color: var(--text-dim); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-value { font-size: 1.4rem; font-weight: 700; margin-top: 4px; color: var(--text); }
+    .stat-sub { font-size: 0.8rem; color: var(--text-dim); margin-top: 4px; }
+    .stat-value.pos { color: var(--pos); }
+    .stat-value.neg { color: var(--neg); }
+    .stat-value.neu { color: var(--text); }
 
     #chart-img { width: 100%; border-radius: 8px; }
 
-    /* ── Tracker table ── */
+    /* ── Tables ── */
     .table-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
     thead th {
@@ -188,20 +227,20 @@
       padding: 10px 14px;
       font-size: 0.72rem;
       font-weight: 600;
-      color: #6b7280;
+      color: var(--text-dim);
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      border-bottom: 2px solid #f3f4f6;
+      border-bottom: 2px solid var(--border);
       white-space: nowrap;
     }
     thead th:first-child { text-align: left; }
-    tbody tr { border-bottom: 1px solid #f3f4f6; }
+    tbody tr { border-bottom: 1px solid var(--border); }
     tbody tr:last-child { border-bottom: none; }
-    tbody tr:hover { background: #f9fafb; }
-    tbody td { padding: 11px 14px; text-align: right; }
+    tbody tr:hover { background: var(--card-alt); }
+    tbody td { padding: 11px 14px; text-align: right; color: var(--text); }
     tbody td:first-child { text-align: left; font-weight: 600; }
-    .positive { color: #16a34a; }
-    .negative { color: #dc2626; }
+    .positive { color: var(--pos); }
+    .negative { color: var(--neg); }
 
   </style>
 </head>
@@ -209,6 +248,10 @@
 
 <header>
   <h1>Cloudfolio</h1>
+  <nav>
+    <button class="nav-btn active" id="nav-tracker" onclick="showSection('tracker')">Tracker</button>
+    <button class="nav-btn" id="nav-presession" onclick="showSection('presession')">Pre-session Scanner</button>
+  </nav>
 </header>
 
 <main>
@@ -280,11 +323,69 @@
     </div>
   </div>
 
+  <!-- ══ PRE-SESSION SCANNER SECTION ══ -->
+  <div id="presession-section" class="section" style="display:none;">
+    <div class="card">
+      <h2>Pre-session conditions scanner</h2>
+      <p style="color:var(--text-dim); font-size:0.9rem;">
+        Evidence, not verdicts — level and percentile per dimension, no blended directional score.
+      </p>
+    </div>
+
+    <div>
+      <button class="btn-generate" id="presession-btn" onclick="runScan()">
+        Run scan
+        <span class="spinner" id="presession-spinner"></span>
+      </button>
+    </div>
+
+    <div class="error-msg" id="presession-error"></div>
+
+    <div id="presession-results" class="section" style="display:none;">
+      <div class="card">
+        <h2>Regime</h2>
+        <div class="summary-grid" id="presession-summary-grid"></div>
+      </div>
+
+      <div class="card">
+        <h2>Screener — watchlist</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Ticker</th>
+                <th>Gap %</th>
+                <th>5d return %</th>
+                <th>Rel. strength (pp)</th>
+              </tr>
+            </thead>
+            <tbody id="presession-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </main>
 
 <script>
   const API_URL = "__API_URL__";
   const BASKETS = __BASKETS_JSON__;
+
+  // Separate stack (infra/pre-session-scanner/), deployed/managed independently
+  // of cloudfolio — hardcoded rather than injected at deploy time, same
+  // reasoning as the CI role ARN in .github/workflows/deploy.yml. Update this
+  // if that stack is ever torn down and its API Gateway URL changes.
+  const PRESESSION_API_URL = "https://k6teng7nr2.execute-api.eu-west-2.amazonaws.com";
+
+  // ── Navigation ──────────────────────────────────────────────────────────────
+
+  function showSection(name) {
+    document.getElementById("tracker-section").style.display = name === "tracker" ? "" : "none";
+    document.getElementById("presession-section").style.display = name === "presession" ? "" : "none";
+    document.getElementById("nav-tracker").classList.toggle("active", name === "tracker");
+    document.getElementById("nav-presession").classList.toggle("active", name === "presession");
+  }
 
   // ── Shared ticker helpers ───────────────────────────────────────────────────
 
@@ -420,6 +521,80 @@
         <td class="${colorClass(r.return_gbp_pct)}">${fmt(r.return_gbp_pct)}%</td>
         <td class="${colorClass(r.vs_index_pp)}">${fmt(r.vs_index_pp)}</td>
         <td class="${colorClass(r.forex_adjustment_pp)}">${fmt(r.forex_adjustment_pp)}</td>
+      </tr>
+    `).join("");
+  }
+
+  // ── Pre-session scanner ────────────────────────────────────────────────────
+
+  async function runScan() {
+    const btn     = document.getElementById("presession-btn");
+    const spinner = document.getElementById("presession-spinner");
+    const errorEl = document.getElementById("presession-error");
+    const results = document.getElementById("presession-results");
+
+    setLoading(btn, spinner, true);
+    errorEl.style.display = "none";
+    results.style.display = "none";
+
+    try {
+      const res  = await fetch(`${PRESESSION_API_URL}/scan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ run_type: "on-demand" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      if (!data.publish_ok) throw new Error("Publish gate failed — required data missing: " + (data.errors || []).join("; "));
+
+      renderPresessionSummary(data);
+      renderPresessionTable(data.screener || []);
+      results.style.display = "";
+      results.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (err) {
+      showError("presession-error", `Error: ${err.message}`);
+    } finally {
+      setLoading(btn, spinner, false);
+    }
+  }
+
+  function renderPresessionSummary(d) {
+    const vol = d.volatility || {};
+    const breadth = d.breadth || {};
+    const oil = (d.commodities || {}).oil || {};
+    const gold = (d.commodities || {}).gold || {};
+
+    document.getElementById("presession-summary-grid").innerHTML = `
+      <div class="stat">
+        <div class="stat-label">Volatility (VIX)</div>
+        <div class="stat-value neu">${fmt(vol.level, 2)}</div>
+        <div class="stat-sub">pct (1y): ${fmt(vol.percentile_1y, 1)} &middot; 2 sessions ago: ${fmt(vol.percentile_1y_2_sessions_ago, 1)}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Breadth (watchlist proxy)</div>
+        <div class="stat-value neu">${fmt(breadth.pct_above_50dma, 1)}%</div>
+        <div class="stat-sub">above 50DMA &middot; ${breadth.universe_size ?? "—"} tickers</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Oil</div>
+        <div class="stat-value neu">${fmt(oil.price, 2)}</div>
+        <div class="stat-sub">price pct (1y): ${fmt(oil.price_percentile_1y, 1)} &middot; vol pct: ${fmt(oil.realized_vol_percentile_1y, 1)}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Gold</div>
+        <div class="stat-value neu">${fmt(gold.price, 2)}</div>
+        <div class="stat-sub">price pct (1y): ${fmt(gold.price_percentile_1y, 1)} &middot; vol pct: ${fmt(gold.realized_vol_percentile_1y, 1)}</div>
+      </div>
+    `;
+  }
+
+  function renderPresessionTable(rows) {
+    document.getElementById("presession-table-body").innerHTML = rows.map(r => `
+      <tr>
+        <td>${r.ticker}</td>
+        <td class="${colorClass(r.gap_pct)}">${fmt(r.gap_pct)}</td>
+        <td class="${colorClass(r.return_5d_pct)}">${fmt(r.return_5d_pct)}</td>
+        <td class="${colorClass(r.relative_strength_vs_benchmark_pp)}">${fmt(r.relative_strength_vs_benchmark_pp)}</td>
       </tr>
     `).join("");
   }

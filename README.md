@@ -5,8 +5,9 @@ A personal collection of finance tools, each usable as a local CLI and (optional
 ## Project structure
 
 ```
-tracker/        Stock basket tracker — local CLI (tracker.py, chart.py, baskets.json)
-infra/          AWS infrastructure, one subfolder per deployable tool
+tracker/                Stock basket tracker — local CLI (tracker.py, chart.py, baskets.json)
+pre-session-scanner/    Pre-session market conditions scanner — local CLI (scanner.py, dashboard.py)
+infra/                  AWS infrastructure, one subfolder per deployable tool
 ```
 
 Each tool's infra lives in its own `infra/<tool>/` subfolder — a self-contained Terraform setup deployed and torn down via GitHub Actions workflows, independently of other tools, while sharing a common Terraform state bucket. See [infra/README.md](infra/README.md) for how that's organised.
@@ -16,6 +17,7 @@ Each tool's infra lives in its own `infra/<tool>/` subfolder — a self-containe
 | Tool | What it does | Docs |
 |---|---|---|
 | Tracker | Compares a basket of stocks against a benchmark index, with GBP/USD forex adjustment | [tracker/tracker.md](tracker/tracker.md), [infra/cloudfolio/infra.md](infra/cloudfolio/infra.md) |
+| Pre-session scanner | Market conditions (volatility, breadth, oil/gold) and a watchlist screener, ahead of a trading session — evidence, not predictions | [pre-session-scanner/pre-session.md](pre-session-scanner/pre-session.md), [infra/pre-session-scanner/infra.md](infra/pre-session-scanner/infra.md) |
 
 ## Requirements
 
