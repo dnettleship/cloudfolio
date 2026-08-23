@@ -169,14 +169,25 @@ def commodity_dimension(ticker: str) -> dict:
 # subset of already-fetched headlines rather than to be exhaustive.
 GEOPOLITICAL_KEYWORDS = [
     "war", "conflict", "sanction", "tariff", "opec", "ceasefire", "strike",
-    "embargo", "invasion", "geopolit", "trade war", "export control",
+    "embargo", "invasion", "trade war", "export control",
     "military", "missile", "nuclear", "election", "coup", "unrest",
     "houthi", "red sea", "strait of hormuz", "supply disruption",
+    "iran", "crisis", "taiwan", "middle east",
 ]
 
+# Matched as a prefix (leading \b, no trailing one) rather than a whole
+# word — it's a stem for geopolitical/geopolitics/geopolitically, not a
+# standalone word, so the whole-word pattern below would never match it.
+GEOPOLITICAL_STEM_PREFIXES = ["geopolit"]
 
+# Trailing (?:s|es)? on the whole-word branch handles simple English
+# plurals (tariff/tariffs, sanction/sanctions, embargo/embargoes) —
+# without it, a headline saying "Tariffs" (plural) silently fails to match
+# "tariff" (singular), which is how this list can look empty even when
+# the word is right there.
 GEOPOLITICAL_PATTERN = re.compile(
-    r"\b(" + "|".join(re.escape(kw) for kw in GEOPOLITICAL_KEYWORDS) + r")\b",
+    r"\b(?:" + "|".join(re.escape(kw) for kw in GEOPOLITICAL_KEYWORDS) + r")(?:s|es)?\b"
+    r"|\b(?:" + "|".join(re.escape(p) for p in GEOPOLITICAL_STEM_PREFIXES) + r")",
     re.IGNORECASE,
 )
 
