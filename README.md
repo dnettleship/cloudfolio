@@ -17,7 +17,7 @@ Each tool's infra lives in its own `infra/<tool>/` subfolder — a self-containe
 | Tool | What it does | Docs |
 |---|---|---|
 | Tracker | Compares a basket of stocks against a benchmark index, with GBP/USD forex adjustment | [tracker/tracker.md](tracker/tracker.md), [infra/cloudfolio/infra.md](infra/cloudfolio/infra.md) |
-| Pre-session scanner | Market conditions (volatility, breadth, oil/gold) and a watchlist screener, ahead of a trading session — evidence, not predictions | [pre-session-scanner/pre-session.md](pre-session-scanner/pre-session.md), [infra/pre-session-scanner/infra.md](infra/pre-session-scanner/infra.md) |
+| Pre-session scanner | Market conditions (volatility, breadth, oil/gold), a watchlist screener, and a Claude-written report, ahead of a trading session — evidence-first, with one explicit exception (see docs) | [pre-session-scanner/pre-session.md](pre-session-scanner/pre-session.md), [infra/pre-session-scanner/infra.md](infra/pre-session-scanner/infra.md) |
 
 ## Requirements
 

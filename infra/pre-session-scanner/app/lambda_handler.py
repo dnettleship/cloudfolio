@@ -1,5 +1,6 @@
 import json
 import os
+from datetime import datetime, timezone
 
 os.environ.setdefault("MPLCONFIGDIR", "/tmp")
 
@@ -10,12 +11,15 @@ import report
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "POST,OPTIONS",
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     "Content-Type": "application/json",
 }
 
 _secrets_client = boto3.client("secretsmanager")
+_s3_client = boto3.client("s3")
 _api_key_cache = None
+
+ARCHIVE_LIST_LIMIT = 50
 
 
 def _get_anthropic_api_key() -> str:
@@ -24,6 +28,22 @@ def _get_anthropic_api_key() -> str:
         secret_name = os.environ["ANTHROPIC_API_KEY_SECRET_NAME"]
         _api_key_cache = _secrets_client.get_secret_value(SecretId=secret_name)["SecretString"]
     return _api_key_cache
+
+
+def _save_to_archive(result: dict) -> None:
+    """Best-effort — a failed save shouldn't fail the scan response."""
+    try:
+        bucket = os.environ["ARCHIVE_BUCKET_NAME"]
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
+        key = f"{result['date']}/{timestamp}-{result['run_type']}.json"
+        _s3_client.put_object(
+            Bucket=bucket,
+            Key=key,
+            Body=json.dumps(result),
+            ContentType="application/json",
+        )
+    except Exception as exc:
+        print(f"archive save failed: {exc}")
 
 
 def handle_scan(body: dict) -> dict:
@@ -35,6 +55,7 @@ def handle_scan(body: dict) -> dict:
             result["report"] = report.generate_report(result, api_key=_get_anthropic_api_key())
         except Exception as exc:
             result["report_error"] = str(exc)
+        _save_to_archive(result)
 
     return {
         "statusCode": 200,
@@ -43,12 +64,35 @@ def handle_scan(body: dict) -> dict:
     }
 
 
+def handle_archive() -> dict:
+    bucket = os.environ["ARCHIVE_BUCKET_NAME"]
+    listed = _s3_client.list_objects_v2(Bucket=bucket)
+    keys = sorted((obj["Key"] for obj in listed.get("Contents", [])), reverse=True)[:ARCHIVE_LIST_LIMIT]
+
+    items = []
+    for key in keys:
+        obj = _s3_client.get_object(Bucket=bucket, Key=key)
+        items.append(json.loads(obj["Body"].read()))
+
+    return {
+        "statusCode": 200,
+        "headers": CORS_HEADERS,
+        "body": json.dumps({"items": items}),
+    }
+
+
 def handler(event, context):
-    method = (event.get("requestContext") or {}).get("http", {}).get("method", "")
+    http = (event.get("requestContext") or {}).get("http", {})
+    method = http.get("method", "")
+    path = http.get("path", "")
+
     if method == "OPTIONS":
         return {"statusCode": 200, "headers": CORS_HEADERS, "body": ""}
 
     try:
+        if method == "GET" and path == "/archive":
+            return handle_archive()
+
         body = json.loads(event.get("body") or "{}")
         return handle_scan(body)
 

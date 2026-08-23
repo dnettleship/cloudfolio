@@ -436,6 +436,16 @@ gauges/table still render — matching the "keep last-known-good, don't let
 one failing part take down the rest" spirit of the publish gate, even though
 this specific call sits downstream of that gate rather than inside it.
 
+Every successful scan (report included) is also written to a private S3
+bucket, one JSON object per run — the web-side realization of the History
+store component (#4) above, ahead of that component's own listed build
+order too. A second Cloudfolio site tab ("Archive") lists and re-renders
+past reports from it. Unlike the local CLI's `history/` directory, this
+bucket has no `force_destroy` — a `terraform destroy` of this stack (no CI
+destroy workflow exists for it yet, unlike cloudfolio's) will refuse to
+remove it while it holds objects, rather than silently wiping accumulated
+report history.
+
 ## Engineering considerations
 
 - Treat data freshness as an SLO — the dashboard should visibly flag any

@@ -264,15 +264,78 @@
 <header>
   <h1>Cloudfolio</h1>
   <nav>
-    <button class="nav-btn active" id="nav-tracker" onclick="showSection('tracker')">Tracker</button>
-    <button class="nav-btn" id="nav-presession" onclick="showSection('presession')">Pre-session Scanner</button>
+    <button class="nav-btn active" id="nav-presession" onclick="showSection('presession')">Pre-session Scanner</button>
+    <button class="nav-btn" id="nav-archive" onclick="showSection('archive')">Archive</button>
+    <button class="nav-btn" id="nav-tracker" onclick="showSection('tracker')">Tracker</button>
   </nav>
 </header>
 
 <main>
 
+  <!-- ══ PRE-SESSION SCANNER SECTION ══ -->
+  <div id="presession-section" class="section">
+    <div class="card">
+      <h2>Pre-session conditions scanner</h2>
+      <p style="color:var(--text-dim); font-size:0.9rem;">
+        Evidence, not verdicts — level and percentile per dimension, no blended directional score.
+      </p>
+    </div>
+
+    <div>
+      <button class="btn-generate" id="presession-btn" onclick="runScan()">
+        Run scan
+        <span class="spinner" id="presession-spinner"></span>
+      </button>
+    </div>
+
+    <div class="error-msg" id="presession-error"></div>
+
+    <div id="presession-results" class="section" style="display:none;">
+      <div class="card" id="presession-report-card" style="display:none;">
+        <h2>Report</h2>
+        <div id="presession-report" class="report-body"></div>
+      </div>
+
+      <div class="card">
+        <h2>Regime</h2>
+        <div class="summary-grid" id="presession-summary-grid"></div>
+      </div>
+
+      <div class="card">
+        <h2>Screener — watchlist</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Ticker</th>
+                <th>Gap %</th>
+                <th>5d return %</th>
+                <th>Rel. strength (pp)</th>
+              </tr>
+            </thead>
+            <tbody id="presession-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ ARCHIVE SECTION ══ -->
+  <div id="archive-section" class="section" style="display:none;">
+    <div class="card">
+      <h2>Report archive</h2>
+      <p style="color:var(--text-dim); font-size:0.9rem;">
+        Saved pre-session scans, most recent first. Click an entry to expand its report.
+      </p>
+    </div>
+
+    <div class="error-msg" id="archive-error"></div>
+
+    <div id="archive-list"></div>
+  </div>
+
   <!-- ══ TRACKER SECTION ══ -->
-  <div id="tracker-section" class="section">
+  <div id="tracker-section" class="section" style="display:none;">
     <div class="card">
       <h2>Configuration</h2>
       <div class="row" style="margin-bottom:24px;">
@@ -338,54 +401,6 @@
     </div>
   </div>
 
-  <!-- ══ PRE-SESSION SCANNER SECTION ══ -->
-  <div id="presession-section" class="section" style="display:none;">
-    <div class="card">
-      <h2>Pre-session conditions scanner</h2>
-      <p style="color:var(--text-dim); font-size:0.9rem;">
-        Evidence, not verdicts — level and percentile per dimension, no blended directional score.
-      </p>
-    </div>
-
-    <div>
-      <button class="btn-generate" id="presession-btn" onclick="runScan()">
-        Run scan
-        <span class="spinner" id="presession-spinner"></span>
-      </button>
-    </div>
-
-    <div class="error-msg" id="presession-error"></div>
-
-    <div id="presession-results" class="section" style="display:none;">
-      <div class="card" id="presession-report-card" style="display:none;">
-        <h2>Report</h2>
-        <div id="presession-report" class="report-body"></div>
-      </div>
-
-      <div class="card">
-        <h2>Regime</h2>
-        <div class="summary-grid" id="presession-summary-grid"></div>
-      </div>
-
-      <div class="card">
-        <h2>Screener — watchlist</h2>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Ticker</th>
-                <th>Gap %</th>
-                <th>5d return %</th>
-                <th>Rel. strength (pp)</th>
-              </tr>
-            </thead>
-            <tbody id="presession-table-body"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
 </main>
 
 <script>
@@ -401,10 +416,13 @@
   // ── Navigation ──────────────────────────────────────────────────────────────
 
   function showSection(name) {
-    document.getElementById("tracker-section").style.display = name === "tracker" ? "" : "none";
     document.getElementById("presession-section").style.display = name === "presession" ? "" : "none";
-    document.getElementById("nav-tracker").classList.toggle("active", name === "tracker");
+    document.getElementById("archive-section").style.display = name === "archive" ? "" : "none";
+    document.getElementById("tracker-section").style.display = name === "tracker" ? "" : "none";
     document.getElementById("nav-presession").classList.toggle("active", name === "presession");
+    document.getElementById("nav-archive").classList.toggle("active", name === "archive");
+    document.getElementById("nav-tracker").classList.toggle("active", name === "tracker");
+    if (name === "archive") loadArchive();
   }
 
   // ── Shared ticker helpers ───────────────────────────────────────────────────
@@ -653,6 +671,64 @@
         <td class="${colorClass(r.relative_strength_vs_benchmark_pp)}">${fmt(r.relative_strength_vs_benchmark_pp)}</td>
       </tr>
     `).join("");
+  }
+
+  // ── Archive ─────────────────────────────────────────────────────────────────
+
+  let archiveItems = [];
+
+  async function loadArchive() {
+    const errorEl = document.getElementById("archive-error");
+    const listEl = document.getElementById("archive-list");
+    errorEl.style.display = "none";
+    listEl.innerHTML = `<div class="card" style="color:var(--text-dim);">Loading…</div>`;
+
+    try {
+      const res = await fetch(`${PRESESSION_API_URL}/archive`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      archiveItems = data.items || [];
+      renderArchive();
+    } catch (err) {
+      listEl.innerHTML = "";
+      showError("archive-error", `Error: ${err.message}`);
+    }
+  }
+
+  function renderArchive() {
+    const listEl = document.getElementById("archive-list");
+    if (!archiveItems.length) {
+      listEl.innerHTML = `<div class="card" style="color:var(--text-dim);">No saved scans yet — run a scan from the Pre-session Scanner tab.</div>`;
+      return;
+    }
+    listEl.innerHTML = archiveItems.map((item, i) => {
+      const vol = item.volatility || {};
+      return `
+        <div class="card" style="margin-bottom:14px; cursor:pointer;" onclick="toggleArchiveItem(${i})">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap;">
+            <div>
+              <strong>${item.date || "—"}</strong>
+              <span style="color:var(--text-dim); font-size:0.85rem; margin-left:8px;">${item.run_type || ""}</span>
+            </div>
+            <span style="color:var(--text-dim); font-size:0.85rem;">VIX ${fmt(vol.level, 2)} &middot; pct ${fmt(vol.percentile_1y, 1)}</span>
+          </div>
+          <div id="archive-item-${i}" style="display:none; margin-top:16px;" class="report-body"></div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function toggleArchiveItem(i) {
+    const el = document.getElementById(`archive-item-${i}`);
+    if (el.style.display !== "none") {
+      el.style.display = "none";
+      return;
+    }
+    const item = archiveItems[i];
+    el.innerHTML = item.report
+      ? renderReportMarkdown(item.report)
+      : `<p style="color:var(--text-dim);">${item.report_error ? "Report unavailable: " + item.report_error : "No report for this scan."}</p>`;
+    el.style.display = "";
   }
 
   // ── Shared utilities ────────────────────────────────────────────────────────
