@@ -1,2 +1,5 @@
 .terraform*
 .DS_Store
+*pycache*
+pre-session-scanner/history/
+pre-session-scanner/dashboard.html

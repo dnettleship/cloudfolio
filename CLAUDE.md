@@ -16,6 +16,15 @@ python3 tracker/chart.py --basket tech-us --days 365         # 1-year chart
 
 `--days` defaults to 30, max 3650.
 
+### Local pre-session scanner
+
+```bash
+python3 pre-session-scanner/scanner.py                    # JSON to stdout, writes dashboard.html + history/
+python3 pre-session-scanner/scanner.py --run-type pre-open
+```
+
+Watchlist/config in `pre-session-scanner/watchlist.json`. `history/` and `dashboard.html` are gitignored (generated).
+
 No test suite or linter is configured.
 
 ### Infrastructure
@@ -29,9 +38,15 @@ To change infra locally without going through CI (e.g. to fix the CI role's own 
 
 A broken commit on `main` goes live automatically — keep this in mind before pushing.
 
+`infra/pre-session-scanner/` (the pre-session scanner's backend) has no CI yet — deploy locally, see `infra/pre-session-scanner/infra.md`. Its API URL is hardcoded in `infra/cloudfolio/frontend/index.html` as `PRESESSION_API_URL`, not injected at deploy time; update it there if that stack is ever destroyed/recreated.
+
+**zsh gotcha**: when typing ad hoc `docker build/push` commands (not inside a `.sh` script) directly in this shell, unbraced `$VAR:word` is parsed as a zsh history-modifier (e.g. `:latest` → `:l` = lowercase, silently eating the colon and the `l`). Always brace it: `"${ECR_URL}:latest"`, not `"$ECR_URL:latest"`. Bash scripts and GitHub Actions `run:` blocks aren't affected — only commands run directly in this zsh session.
+
 ## Architecture
 
-`infra/` holds one subfolder per deployable tool (e.g. `infra/cloudfolio/`), each a self-contained Terraform root module. They share a Terraform state bucket defined in `infra/backend.hcl`, with each tool using its own state key — see `infra/README.md`. Currently `cloudfolio` is the only tool.
+`infra/` holds one subfolder per deployable tool (`infra/cloudfolio/`, `infra/pre-session-scanner/`), each a self-contained Terraform root module. They share a Terraform state bucket defined in `infra/backend.hcl`, with each tool using its own state key — see `infra/README.md`.
+
+`infra/cloudfolio/frontend/index.html` is the umbrella site (tabbed UI, dark theme) and calls both tools' APIs — cloudfolio's own `/report` (URL injected at deploy time) and pre-session-scanner's separate `/scan` (hardcoded, see above) — even though the two backends deploy independently. Known asymmetry: the tracker's backend lives under `infra/cloudfolio/` rather than its own `infra/tracker/`, unlike pre-session-scanner.
 
 There are two independent execution paths that share the same tracker logic:
 
@@ -50,3 +65,5 @@ The frontend is a single static HTML file (`infra/cloudfolio/frontend/index.html
 **Docker build context**: The Dockerfile uses `--platform linux/amd64` (Lambda requirement) and is built with the repo root as context (`docker build -f infra/cloudfolio/app/Dockerfile .`), so `COPY` paths in the Dockerfile are relative to the repo root.
 
 **CORS**: Lambda owns CORS entirely — every response includes `Access-Control-Allow-Origin: *` via `CORS_HEADERS`, and OPTIONS preflights are handled inside `handler()`. There is no `cors_configuration` block on the API Gateway Terraform resource; adding one would cause duplicate headers that browsers reject.
+
+**Pre-session scanner** (`pre-session-scanner/`, `infra/pre-session-scanner/`): unlike the tracker, the Lambda handler (`infra/pre-session-scanner/app/lambda_handler.py`) does *not* reimplement anything — the Dockerfile copies `pre-session-scanner/scanner.py` and `dashboard.py` straight into the image, and the handler just calls `scanner.build_result(run_type)`. Same publish-gate rule as the design doc: the response's `publish_ok` field is `false` if a required dimension (volatility, breadth, commodities) failed — the frontend treats that as an error rather than rendering partial results. See `pre-session-scanner/pre-session-equity-tool-design.md` for the full design and phased build plan; the current code is Phase 1 only.

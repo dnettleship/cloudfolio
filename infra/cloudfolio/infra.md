@@ -2,6 +2,8 @@
 
 AWS deployment for the Cloudfolio stock tracker. The backend runs as a Lambda container and is fronted by an API Gateway HTTP API. The frontend is a static HTML page served from S3 via CloudFront (HTTPS).
 
+The frontend also has a second tab that calls a separate tool's API — [`infra/pre-session-scanner`](../pre-session-scanner/infra.md) — deployed and destroyed independently of this stack. See that doc for its own deploy process and the `PRESESSION_API_URL` constant in `frontend/index.html`.
+
 ## Architecture
 
 ```
@@ -37,7 +39,7 @@ The GitHub OIDC provider itself (`token.actions.githubusercontent.com`) is a sin
 
 [`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml) runs automatically on every push to `main` (no path filter — any push redeploys). It can also be triggered manually from the Actions tab (`workflow_dispatch`) with a `mode` input:
 
-- **`full`** (default) — provisions ECR, builds & pushes the Docker image, force-updates the Lambda function code, applies the rest of Terraform, then uploads the frontend
+- **`full`** (default) — provisions ECR, builds & pushes the Docker image, force-updates the Lambda function code (skipped if the function doesn't exist yet — e.g. a first-ever deploy or a redeploy after `destroy.yml`, since Terraform creates it fresh with the just-pushed image), applies the rest of Terraform, then uploads the frontend
 - **`upload-only`** — skips Docker/Terraform entirely and just re-injects `__API_URL__` / `__BASKETS_JSON__` into `index.html` and uploads to S3. Use this after a `tracker/baskets.json`-only change, since a full redeploy isn't needed for that.
 
 Both modes finish by injecting the API Gateway URL and the baskets from [`tracker/baskets.json`](../../tracker/baskets.json) into `index.html`. The run's summary page prints the site URL and API endpoint.
