@@ -15,10 +15,12 @@ Phase 1 scope (yfinance-only, no paid sources yet):
                  plus a trailing 90-session price history for charting
   - Screener:    overnight gap % and 5-day relative strength vs benchmark,
                  for the static watchlist
-  - News:        recent headlines for the watchlist and oil/gold (not the
-                 benchmark or VIX, whose feeds skew generic/market-wide) —
-                 informational only, like screener, not part of the
-                 publish gate
+  - News:        {headlines, geopolitical} — recent headlines for the
+                 watchlist and oil/gold (not the benchmark or VIX, whose
+                 feeds skew generic/market-wide), plus a keyword-matched
+                 geopolitical subset of the same fetch (see
+                 GEOPOLITICAL_KEYWORDS). Informational only, like screener,
+                 not part of the publish gate
   - Calendar:    near-term watchlist earnings dates (yfinance, free) and
                  the next FOMC meeting date (a small hardcoded schedule,
                  see FOMC_MEETING_DATES — same low-maintenance approach as
@@ -34,6 +36,7 @@ Usage:
 import argparse
 import datetime
 import json
+import re
 import pathlib
 import sys
 
@@ -115,8 +118,32 @@ def commodity_dimension(ticker: str) -> dict:
     }
 
 
-def news_dimension(tickers: list, commodities: dict, limit: int = 8, per_ticker_limit: int = 2) -> list:
-    """Recent headlines for the watchlist and commodities only.
+# Keyword heuristic, not an ML classifier — same low-maintenance spirit as
+# FOMC_MEETING_DATES. Oil and gold are called out in the design doc as
+# unusually geopolitically-driven, so this mainly exists to surface that
+# subset of already-fetched headlines rather than to be exhaustive.
+GEOPOLITICAL_KEYWORDS = [
+    "war", "conflict", "sanction", "tariff", "opec", "ceasefire", "strike",
+    "embargo", "invasion", "geopolit", "trade war", "export control",
+    "military", "missile", "nuclear", "election", "coup", "unrest",
+    "houthi", "red sea", "strait of hormuz", "supply disruption",
+]
+
+
+GEOPOLITICAL_PATTERN = re.compile(
+    r"\b(" + "|".join(re.escape(kw) for kw in GEOPOLITICAL_KEYWORDS) + r")\b",
+    re.IGNORECASE,
+)
+
+
+def _is_geopolitical(title: str) -> bool:
+    return bool(GEOPOLITICAL_PATTERN.search(title))
+
+
+def news_dimension(tickers: list, commodities: dict, limit: int = 8, geo_limit: int = 5, per_ticker_limit: int = 2) -> dict:
+    """Recent headlines for the watchlist and commodities only, plus a
+    geopolitical subset (keyword-matched, see GEOPOLITICAL_KEYWORDS) drawn
+    from the same fetch — no extra yfinance calls.
 
     Deliberately excludes the benchmark and VIX — their yfinance news feeds
     lean generic/market-wide (personal-finance pieces, unrelated-sector
@@ -151,11 +178,21 @@ def news_dimension(tickers: list, commodities: dict, limit: int = 8, per_ticker_
             taken += 1
 
     items.sort(key=lambda i: i["published"] or "", reverse=True)
-    return items[:limit]
+    geopolitical = [i for i in items if _is_geopolitical(i["title"])][:geo_limit]
+    return {"headlines": items[:limit], "geopolitical": geopolitical}
 
 
 def calendar_dimension(tickers: list, lookahead_days: int = 14) -> dict:
-    """Near-term watchlist earnings dates and the next FOMC meeting."""
+    """Near-term watchlist earnings dates and the next FOMC meeting.
+
+    Each earnings entry includes yfinance's consensus EPS estimate
+    (Low/Avg/High) where available — "what to watch" is the estimate range
+    the print will be judged against, not something we can source a link
+    for without a paid API. `analysis_url` points to Yahoo Finance's own
+    analysis page for the ticker (estimates, analyst ratings) rather than
+    a specific article, since there's no reliable free "earnings preview"
+    source to link per ticker.
+    """
     today = datetime.date.today()
     horizon = today + datetime.timedelta(days=lookahead_days)
 
@@ -168,7 +205,15 @@ def calendar_dimension(tickers: list, lookahead_days: int = 14) -> dict:
         for raw_date in cal.get("Earnings Date") or []:
             d = raw_date if isinstance(raw_date, datetime.date) else datetime.date.fromisoformat(str(raw_date))
             if today <= d <= horizon:
-                earnings.append({"ticker": ticker, "date": d.isoformat()})
+                earnings.append({
+                    "ticker": ticker,
+                    "date": d.isoformat(),
+                    "eps_estimate_low": cal.get("Earnings Low"),
+                    "eps_estimate_avg": cal.get("Earnings Average"),
+                    "eps_estimate_high": cal.get("Earnings High"),
+                    "revenue_estimate_avg": cal.get("Revenue Average"),
+                    "analysis_url": f"https://finance.yahoo.com/quote/{ticker}/analysis",
+                })
                 break  # one entry per ticker is enough
     earnings.sort(key=lambda e: e["date"])
 

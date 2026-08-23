@@ -425,12 +425,15 @@ treatment is simpler and more direct than the equity screener.
 Built earlier than the phase plan called for, once the Phase 1 dashboard
 proved the gauges/numbers alone weren't a useful read on their own. On a
 successful scan, the Lambda sends the full result dict to Claude (Haiku 4.5)
-with a prompt asking for a short prose report in three parts: 3-4 paragraphs
+with a prompt asking for a short prose report in four parts: 3-4 paragraphs
 of evidence covering the overall market backdrop, not just the watchlist
 (mirroring the dashboard's dimensions, plus 1-2 relevant news headlines when
-present); a short "Upcoming events" note on near-term watchlist earnings and
-the next FOMC meeting (from the `calendar` field — see Ingestion jobs
-above); then a labeled "Likely near-term bias" section for the *broader
+present); a short "Geopolitical risk factors" note drawn from the same news
+fetch's keyword-matched subset (oil/gold weighted more heavily, per this
+doc's Purpose section on commodities being geopolitically-driven); a short
+"Upcoming events" note on near-term watchlist earnings and the next FOMC
+meeting (from the `calendar` field — see Ingestion jobs above); then a
+labeled "Likely near-term bias" section for the *broader
 market*, not narrowly the watchlist — see the Amendment under Core design
 principle above for why that last part is scoped as an explicit, isolated
 exception to the no-verdict rule rather than a new signal. Failure is
