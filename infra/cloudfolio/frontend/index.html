@@ -326,6 +326,14 @@
       </div>
 
       <div class="card">
+        <h2>Leading indicators</h2>
+        <p style="color:var(--text-dim); font-size:0.85rem; margin-bottom:14px;">
+          Pre-market futures and cross-asset context — level + latest-session change, not percentile-scored.
+        </p>
+        <div class="summary-grid" id="presession-futures-grid"></div>
+      </div>
+
+      <div class="card">
         <h2>Regime</h2>
         <div class="summary-grid" id="presession-summary-grid"></div>
         <h2 class="mt">Price trend — oil &amp; gold (90 sessions)</h2>
@@ -627,6 +635,7 @@
       if (!data.publish_ok) throw new Error("Publish gate failed — required data missing: " + (data.errors || []).join("; "));
 
       renderPresessionReport(data);
+      renderPresessionFutures(data);
       renderPresessionSummary(data);
       renderPresessionTable(data.screener || []);
       renderHeadlines("presession-headlines", newsHeadlines(data.news));
@@ -677,6 +686,37 @@
     } else {
       card.style.display = "none";
     }
+  }
+
+  function renderPresessionFutures(d) {
+    const fut = d.futures || {};
+    const sp = fut.sp500_futures || {};
+    const nq = fut.nasdaq_futures || {};
+    const ty = fut.ten_year_yield || {};
+    const dxy = fut.dollar_index || {};
+
+    document.getElementById("presession-futures-grid").innerHTML = `
+      <div class="stat">
+        <div class="stat-label">S&amp;P 500 futures</div>
+        <div class="stat-value ${colorClass(sp.change_pct)}">${fmt(sp.level, 2)}</div>
+        <div class="stat-sub">${fmt(sp.change_pct)}%</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Nasdaq futures</div>
+        <div class="stat-value ${colorClass(nq.change_pct)}">${fmt(nq.level, 2)}</div>
+        <div class="stat-sub">${fmt(nq.change_pct)}%</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">10-year yield</div>
+        <div class="stat-value ${colorClass(ty.change_pp)}">${fmt(ty.level_pct, 3)}%</div>
+        <div class="stat-sub">${fmt(ty.change_pp, 3)} pp</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Dollar index</div>
+        <div class="stat-value ${colorClass(dxy.change_pct)}">${fmt(dxy.level, 2)}</div>
+        <div class="stat-sub">${fmt(dxy.change_pct)}%</div>
+      </div>
+    `;
   }
 
   function renderPresessionSummary(d) {
