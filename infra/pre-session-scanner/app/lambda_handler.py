@@ -1,6 +1,5 @@
 import json
 import os
-from datetime import datetime, timezone
 
 os.environ.setdefault("MPLCONFIGDIR", "/tmp")
 
@@ -31,11 +30,15 @@ def _get_anthropic_api_key() -> str:
 
 
 def _save_to_archive(result: dict) -> None:
-    """Best-effort — a failed save shouldn't fail the scan response."""
+    """Best-effort — a failed save shouldn't fail the scan response.
+
+    One object per calendar day (key is just the date) — a later scan the
+    same day overwrites the earlier one rather than accumulating alongside
+    it, so re-running (or testing) never clutters the archive.
+    """
     try:
         bucket = os.environ["ARCHIVE_BUCKET_NAME"]
-        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
-        key = f"{result['date']}/{timestamp}-{result['run_type']}.json"
+        key = f"{result['date']}.json"
         _s3_client.put_object(
             Bucket=bucket,
             Key=key,

@@ -51,12 +51,15 @@ the key into a chat transcript.
 ## Report archive (S3)
 
 Every successful scan is saved to a private S3 bucket
-(`pre-session-scanner-archive-<account_id>`), one JSON object per scan at
-`{date}/{timestamp}-{run_type}.json`. This bucket has **no `force_destroy`**
-— unlike the site buckets, it's meant to accumulate, so `terraform destroy`
-will refuse to remove it while it holds objects rather than silently
-wiping saved report history. Archiving a scan is best-effort: a failure
-there doesn't fail the scan response (logged to CloudWatch instead).
+(`pre-session-scanner-archive-<account_id>`), one JSON object per **day**
+at `{date}.json` — a later scan the same day overwrites the earlier one
+rather than accumulating alongside it (multiple runs, or repeated testing,
+never clutter the archive). This bucket has **no `force_destroy`** — unlike
+the site buckets, it's meant to accumulate across days, so `terraform
+destroy` will refuse to remove it while it holds objects rather than
+silently wiping saved report history. Archiving a scan is best-effort: a
+failure there doesn't fail the scan response (logged to CloudWatch
+instead).
 
 ## Deploy
 
