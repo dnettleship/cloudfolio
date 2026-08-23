@@ -11,6 +11,8 @@ provider "aws" {
   region = var.aws_region
 }
 
+data "aws_caller_identity" "current" {}
+
 # ── ECR ──────────────────────────────────────────────────────────────────────
 
 resource "aws_ecr_repository" "app" {
@@ -50,12 +52,46 @@ resource "aws_iam_role_policy" "lambda_secrets" {
   })
 }
 
+resource "aws_iam_role_policy" "lambda_archive" {
+  name = "${var.project}-archive-access"
+  role = aws_iam_role.lambda.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["s3:PutObject", "s3:GetObject"]
+        Resource = "${aws_s3_bucket.archive.arn}/*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = "s3:ListBucket"
+        Resource = aws_s3_bucket.archive.arn
+      },
+    ]
+  })
+}
+
 # ── Secrets ──────────────────────────────────────────────────────────────────
 
 # Value is set out-of-band via `aws secretsmanager put-secret-value` — never
 # committed to Terraform state as a secret_version resource.
 resource "aws_secretsmanager_secret" "anthropic_api_key" {
   name = "${var.project}-anthropic-api-key"
+}
+
+# ── S3 (private — report archive) ──────────────────────────────────────────
+
+resource "aws_s3_bucket" "archive" {
+  bucket = "${var.project}-archive-${data.aws_caller_identity.current.account_id}"
+}
+
+resource "aws_s3_bucket_public_access_block" "archive" {
+  bucket                  = aws_s3_bucket.archive.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
 # ── Lambda ───────────────────────────────────────────────────────────────────
@@ -74,6 +110,7 @@ resource "aws_lambda_function" "app" {
   environment {
     variables = {
       ANTHROPIC_API_KEY_SECRET_NAME = aws_secretsmanager_secret.anthropic_api_key.name
+      ARCHIVE_BUCKET_NAME           = aws_s3_bucket.archive.bucket
     }
   }
 }
@@ -103,6 +140,18 @@ resource "aws_apigatewayv2_route" "scan" {
 resource "aws_apigatewayv2_route" "scan_options" {
   api_id    = aws_apigatewayv2_api.app.id
   route_key = "OPTIONS /scan"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "archive" {
+  api_id    = aws_apigatewayv2_api.app.id
+  route_key = "GET /archive"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "archive_options" {
+  api_id    = aws_apigatewayv2_api.app.id
+  route_key = "OPTIONS /archive"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 

@@ -7,7 +7,10 @@ look most in play given that state?
 It describes conditions — it does not predict direction. Every output is
 evidence (VIX percentile, breadth trend, today's calendar) shown separately,
 never blended into a single directional score. The goal is to inform a
-human decision, not replace one.
+human decision, not replace one. One explicit, isolated exception: the
+written report (below) ends with a labeled, on-request "likely near-term
+bias" call — see the Amendment in the design doc for why that's scoped as
+a deliberate carve-out rather than a quiet reversal of the principle.
 
 **Shape**: scheduled ingestion from ~8 market data sources → a publish gate
 that blocks the dashboard from updating if required data is missing →
@@ -30,8 +33,15 @@ styling, alerting, backtesting).
   history snapshot and a plain-page `dashboard.html`, both gitignored.
 - Also deployed as an on-demand Lambda (`infra/pre-session-scanner/`,
   `POST /scan`), reusing the exact same `scanner.py`/`dashboard.py` — no
-  separate web reimplementation. Surfaced as a tab on the Cloudfolio site
-  (`infra/cloudfolio/frontend/index.html`), with a "Run scan" button calling
-  it live. No scheduling yet — every run, local or web, is on-demand.
+  separate web reimplementation. No scheduling yet — every run, local or
+  web, is on-demand.
+- `report.py` turns a scan's data into a short written report via Claude
+  (Haiku 4.5) — the Lambda calls it after every successful scan; the CLI
+  does not (JSON/dashboard.html only, no API key wired up locally yet).
+- On the Cloudfolio site (`infra/cloudfolio/frontend/index.html`): a
+  **Pre-session Scanner** tab (the "Run scan" button, live report + gauges +
+  screener) and an **Archive** tab (`GET /archive`, lists every past scan
+  saved to S3, click to expand its report). Nav order is Pre-session
+  Scanner → Archive → Tracker.
 
 Full design: [pre-session-equity-tool-design.md](pre-session-equity-tool-design.md)
