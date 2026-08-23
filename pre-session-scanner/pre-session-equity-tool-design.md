@@ -431,18 +431,25 @@ treatment is simpler and more direct than the equity screener.
 Built earlier than the phase plan called for, once the Phase 1 dashboard
 proved the gauges/numbers alone weren't a useful read on their own. On a
 successful scan, the Lambda sends the full result dict to Claude (Haiku 4.5)
-with a prompt asking for a short prose report in four parts: 3-4 paragraphs
+with a prompt asking for a short prose report in five parts: 2-3 paragraphs
 of evidence covering the overall market backdrop, not just the watchlist
 (mirroring the dashboard's dimensions, plus 1-2 relevant news headlines when
 present); a short "Geopolitical risk factors" note drawn from the same news
 fetch's keyword-matched subset (oil/gold weighted more heavily, per this
 doc's Purpose section on commodities being geopolitically-driven); a short
 "Upcoming events" note on near-term watchlist earnings and the next FOMC
-meeting (from the `calendar` field — see Ingestion jobs above); then a
-labeled "Likely near-term bias" section for the *broader
-market*, not narrowly the watchlist — see the Amendment under Core design
-principle above for why that last part is scoped as an explicit, isolated
-exception to the no-verdict rule rather than a new signal. Failure is
+meeting (from the `calendar` field — see Ingestion jobs above); a labeled
+"Likely near-term bias" section for the *broader market*, not narrowly the
+watchlist — see the Amendment under Core design principle above for why
+that part is scoped as an explicit, isolated exception to the no-verdict
+rule rather than a new signal; then a "Key drivers" bullet list naming the
+2-3 specific metrics (with their exact readings, not just the dimension
+name) behind that call — broken out as its own section deliberately, so
+the evidence stays visually separable from the call itself rather than
+buried in the same paragraph. The prompt explicitly bars trading advice
+("buy/sell/hold") in every part, not only the bias call — the Key drivers
+list stays evidence ("VIX: 15.13, 12th percentile"), never an instruction.
+Failure is
 non-fatal: if the API call errors (bad/missing key, rate limit, etc.), the
 scan still returns successfully with `report_error` set instead of `report`,
 and the gauges/table still render — matching the "keep last-known-good,
