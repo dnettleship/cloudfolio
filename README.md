@@ -6,7 +6,7 @@ A personal collection of finance tools, each usable as a local CLI and (optional
 
 ```
 tracker/                Stock basket tracker — local CLI (tracker.py, chart.py, baskets.json)
-pre-session-scanner/    Pre-session market conditions scanner — local CLI (scanner.py, dashboard.py)
+pre-session-scanner/    Pre-session market conditions scanner — local CLI (scanner.py, dashboard.py, report.py)
 infra/                  AWS infrastructure, one subfolder per deployable tool
 ```
 

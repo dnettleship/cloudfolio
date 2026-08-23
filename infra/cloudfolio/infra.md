@@ -2,7 +2,7 @@
 
 AWS deployment for the Cloudfolio stock tracker. The backend runs as a Lambda container and is fronted by an API Gateway HTTP API. The frontend is a static HTML page served from S3 via CloudFront (HTTPS).
 
-The frontend also has a second tab that calls a separate tool's API — [`infra/pre-session-scanner`](../pre-session-scanner/infra.md) — deployed and destroyed independently of this stack. See that doc for its own deploy process and the `PRESESSION_API_URL` constant in `frontend/index.html`.
+The frontend also has two other tabs — Pre-session Scanner and Archive (nav order: Pre-session Scanner, Archive, Tracker) — that call a separate tool's API — [`infra/pre-session-scanner`](../pre-session-scanner/infra.md) — deployed and destroyed independently of this stack. See that doc for its own deploy process and the `PRESESSION_API_URL` constant in `frontend/index.html`.
 
 ## Architecture
 
