@@ -132,7 +132,11 @@ Per-source candidates to evaluate (pick based on cost/free-tier limits at
 build time — this list is a starting point, not a commitment):
 
 - **Futures / index prices, VIX**: `yfinance` — free. `ES=F` / `NQ=F` for
-  S&P 500 / Nasdaq-100 futures, `^VIX` for spot volatility.
+  S&P 500 / Nasdaq-100 futures, `^VIX` for spot volatility. **Implemented**
+  (`scanner.py`'s `futures_dimension` and `volatility_dimension`) — level +
+  latest-session change for futures, not percentile-scored like the rest,
+  since it's read as an overnight-move/opening signal rather than a
+  historical-distribution one.
 - **Breadth** (advance/decline, new highs/lows, % above moving averages):
   computed in-house from S&P 500 constituent daily OHLCV, pulled via
   `yfinance` in one batch call (`yf.download(tickers=[...], period="1y",
@@ -167,7 +171,9 @@ build time — this list is a starting point, not a commitment):
 - **Cross-asset**: `yfinance` again — `^TNX` for the 10-year yield,
   `DX-Y.NYB` (or the `UUP` ETF as a proxy) for the dollar. Doubles as a
   primary driver read for gold (which moves inversely with real yields
-  and the dollar), not just equity context.
+  and the dollar), not just equity context. **Implemented**
+  (`futures_dimension`, same function as the index futures above — `^TNX`
+  came back fetchable directly, no need for the `UUP` fallback).
 - **Retail positioning**: IG's client sentiment endpoint
   (`/clientsentiment/{marketId}`) — directly relevant since this is the
   broker actually used for spread betting. Query it for the gold and oil

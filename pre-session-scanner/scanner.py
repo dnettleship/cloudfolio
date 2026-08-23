@@ -8,6 +8,10 @@ score. See pre-session-equity-tool-design.md for the full design.
 
 Phase 1 scope (yfinance-only, no paid sources yet):
   - Volatility:  VIX level + 1y percentile
+  - Futures:     S&P 500 / Nasdaq-100 futures, 10-year yield, dollar index
+                 — level + latest-session change, leading indicators for
+                 the session ahead (not percentile-scored). Informational
+                 only, not part of the publish gate
   - Breadth:     % of the watchlist above its 50-day moving average
                  (a watchlist-based proxy, not full index breadth — see
                  design doc Phase 3)
@@ -80,6 +84,47 @@ def volatility_dimension(vix_ticker: str) -> dict:
         "percentile_1y_2_sessions_ago": (
             percentile_rank(close.iloc[:-2], prior) if prior is not None else None
         ),
+    }
+
+
+def _price_change(ticker: str) -> dict:
+    close = fetch_history(ticker, period="5d")["Close"].squeeze().dropna()
+    if len(close) < 2:
+        return {"level": round(float(close.iloc[-1]), 2) if len(close) else None, "change_pct": None}
+    level, prior = float(close.iloc[-1]), float(close.iloc[-2])
+    return {"level": round(level, 2), "change_pct": round((level / prior - 1) * 100, 2)}
+
+
+def _yield_change(ticker: str) -> dict:
+    close = fetch_history(ticker, period="5d")["Close"].squeeze().dropna()
+    if len(close) < 2:
+        return {"level_pct": round(float(close.iloc[-1]), 3) if len(close) else None, "change_pp": None}
+    level, prior = float(close.iloc[-1]), float(close.iloc[-2])
+    return {"level_pct": round(level, 3), "change_pp": round(level - prior, 3)}
+
+
+def futures_dimension() -> dict:
+    """Leading indicators for the session ahead: S&P 500 / Nasdaq-100
+    futures (pre-market equity direction), the 10-year yield, and the
+    dollar index — free via yfinance, no key. See design doc's Market data
+    sources #1 ("Futures / index prices" and "Cross-asset" — the yield and
+    dollar double as a primary driver read for gold, not just equity
+    context).
+
+    Level + latest-session change only, not percentile-scored like the
+    other dimensions — matches the design doc's framing of futures as an
+    overnight-move signal rather than a historical-distribution read.
+    Informational only, not part of the publish gate: the design doc lists
+    this alongside VIX as a required source, but VIX alone already covers
+    the core volatility regime, and gating on four more tickers adds
+    fragility (a single Yahoo hiccup on any one blocks the whole report)
+    for what is supporting color here, not the core read.
+    """
+    return {
+        "sp500_futures": _price_change("ES=F"),
+        "nasdaq_futures": _price_change("NQ=F"),
+        "ten_year_yield": _yield_change("^TNX"),
+        "dollar_index": _price_change("DX-Y.NYB"),
     }
 
 
@@ -174,12 +219,22 @@ def news_dimension(tickers: list, commodities: dict, limit: int = 8, geo_limit: 
                 "publisher": (content.get("provider") or {}).get("displayName"),
                 "published": content.get("pubDate"),
                 "related_ticker": ticker,
+                # Only used for geopolitical classification below, not
+                # returned — the summary is longer than the title and
+                # yfinance populates it reliably, so it catches themes the
+                # title alone misses without any extra yfinance calls.
+                "_summary": content.get("summary") or "",
             })
             taken += 1
 
     items.sort(key=lambda i: i["published"] or "", reverse=True)
-    geopolitical = [i for i in items if _is_geopolitical(i["title"])][:geo_limit]
-    return {"headlines": items[:limit], "geopolitical": geopolitical}
+    geopolitical = [
+        {k: v for k, v in i.items() if k != "_summary"}
+        for i in items
+        if _is_geopolitical(i["title"]) or _is_geopolitical(i["_summary"])
+    ][:geo_limit]
+    headlines = [{k: v for k, v in i.items() if k != "_summary"} for i in items[:limit]]
+    return {"headlines": headlines, "geopolitical": geopolitical}
 
 
 def calendar_dimension(tickers: list, lookahead_days: int = 14) -> dict:
@@ -272,6 +327,7 @@ def build_result(run_type: str) -> tuple[dict, bool]:
 
     for key, fn in [
         ("volatility", lambda: volatility_dimension(config["vix_ticker"])),
+        ("futures", futures_dimension),
         ("breadth", lambda: breadth_dimension(config["tickers"])),
         ("commodities", lambda: {
             "oil": commodity_dimension(config["commodities"]["oil"]),
@@ -287,8 +343,8 @@ def build_result(run_type: str) -> tuple[dict, bool]:
             errors.append(f"{key}: {exc}")
 
     # Publish gate (trivial for Phase 1): volatility, breadth, and
-    # commodities are required — screener, news, and calendar are
-    # informational only.
+    # commodities are required — futures, screener, news, and calendar
+    # are informational only.
     required_ok = all(k in result for k in ("volatility", "breadth", "commodities"))
     result["publish_ok"] = required_ok
     if errors:
