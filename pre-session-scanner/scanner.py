@@ -18,6 +18,8 @@ Phase 1 scope (yfinance-only, no paid sources yet):
   - Commodities: oil/gold price percentile + realized-vol percentile,
                  plus a trailing 90-session price history for charting
   - Screener:    overnight gap % and 5-day relative strength vs benchmark,
+                 plus a trailing 90-session price history per ticker for
+                 charting (same shape as the commodities' price_history),
                  for the static watchlist
   - News:        {headlines, geopolitical} — recent headlines for the
                  watchlist and oil/gold (not the benchmark or VIX, whose
@@ -300,7 +302,10 @@ def screener(tickers: list, benchmark: str) -> list:
 
     rows = []
     for ticker in tickers:
-        data = fetch_history(ticker, period="1mo")
+        # 6mo (not 1mo) so there's enough history for the 90-session price
+        # trend chart too — gap/return calcs below are unaffected, they
+        # only ever look at the last few sessions.
+        data = fetch_history(ticker, period="6mo")
         close = data["Close"].squeeze().dropna()
         open_ = data["Open"].squeeze().dropna()
         if len(close) < 2:
@@ -314,11 +319,16 @@ def screener(tickers: list, benchmark: str) -> list:
             round((return_5d - bench_return_5d) * 100, 2)
             if return_5d is not None and bench_return_5d is not None else None
         )
+        trend = close.tail(90)
         rows.append({
             "ticker": ticker,
             "gap_pct": gap_pct,
             "return_5d_pct": round(return_5d * 100, 2) if return_5d is not None else None,
             "relative_strength_vs_benchmark_pp": rel_strength_pp,
+            "price_history": [
+                {"date": d.strftime("%Y-%m-%d"), "close": round(float(v), 2)}
+                for d, v in trend.items()
+            ],
         })
 
     rows.sort(key=lambda r: r["relative_strength_vs_benchmark_pp"] or float("-inf"), reverse=True)
