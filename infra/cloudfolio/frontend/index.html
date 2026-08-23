@@ -344,7 +344,7 @@
         </div>
         <h2 class="mt" style="display:flex; align-items:center; justify-content:space-between;">
           <span>Watchlist</span>
-          <button class="btn-toggle" onclick="toggleCollapse('presession-watchlist-charts', this)">Show ▸</button>
+          <button class="btn-toggle" onclick="toggleCollapse('presession-watchlist-charts', this, event)">Show ▸</button>
         </h2>
         <div class="chart-grid" id="presession-watchlist-charts" style="display:none;"></div>
       </div>
@@ -1036,7 +1036,7 @@
       </div>
       <h2 class="mt" style="display:flex; align-items:center; justify-content:space-between;">
         <span>Watchlist</span>
-        <button class="btn-toggle" onclick="toggleCollapse('${prefix}-watchlist-charts', this)">Show ▸</button>
+        <button class="btn-toggle" onclick="toggleCollapse('${prefix}-watchlist-charts', this, event)">Show ▸</button>
       </h2>
       <div class="chart-grid" id="${prefix}-watchlist-charts" style="display:none;"></div>
       <h2 class="mt">Screener — relative strength (pp)</h2>
@@ -1074,7 +1074,8 @@
     el.style.display = "block";
   }
 
-  function toggleCollapse(id, btn) {
+  function toggleCollapse(id, btn, event) {
+    if (event) event.stopPropagation();
     const el = document.getElementById(id);
     if (!el) return;
     const hidden = el.style.display === "none";
