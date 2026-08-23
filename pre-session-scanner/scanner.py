@@ -11,9 +11,15 @@ Phase 1 scope (yfinance-only, no paid sources yet):
   - Breadth:     % of the watchlist above its 50-day moving average
                  (a watchlist-based proxy, not full index breadth — see
                  design doc Phase 3)
-  - Commodities: oil/gold price percentile + realized-vol percentile
+  - Commodities: oil/gold price percentile + realized-vol percentile,
+                 plus a trailing 90-session price history for charting
   - Screener:    overnight gap % and 5-day relative strength vs benchmark,
                  for the static watchlist
+  - News:        recent headlines for the benchmark, VIX, oil and gold —
+                 informational only, like screener, not part of the
+                 publish gate. Scoped to these four tickers rather than
+                 the whole watchlist to keep the yfinance call count
+                 bounded (see build_result)
 
 Usage:
     python3 scanner.py                    # JSON summary to stdout, writes dashboard.html
@@ -83,12 +89,51 @@ def commodity_dimension(ticker: str) -> dict:
     realized_vol = close.pct_change().dropna().rolling(20).std() * (252 ** 0.5)
     realized_vol = realized_vol.dropna()
     current_vol = float(realized_vol.iloc[-1])
+    trend = close.tail(90)
     return {
         "price": round(current, 2),
         "price_percentile_1y": percentile_rank(close, current),
         "realized_vol_annualized_pct": round(current_vol * 100, 1),
         "realized_vol_percentile_1y": percentile_rank(realized_vol, current_vol),
+        "price_history": [
+            {"date": d.strftime("%Y-%m-%d"), "close": round(float(v), 2)}
+            for d, v in trend.items()
+        ],
     }
+
+
+def news_dimension(vix_ticker: str, benchmark: str, commodities: dict, limit: int = 8) -> list:
+    """Recent headlines for market-wide tickers.
+
+    Scoped to the benchmark, VIX, oil and gold — not the full watchlist —
+    to keep the yfinance call count bounded (build_result already makes
+    roughly two calls per watchlist ticker for breadth and screener).
+    """
+    tickers = [benchmark, vix_ticker, commodities["oil"], commodities["gold"]]
+    seen_titles = set()
+    items = []
+    for ticker in tickers:
+        try:
+            raw = yf.Ticker(ticker).news or []
+        except Exception:
+            continue
+        for entry in raw:
+            content = entry.get("content", {})
+            title = content.get("title")
+            link = (content.get("clickThroughUrl") or {}).get("url")
+            if not title or not link or title in seen_titles:
+                continue
+            seen_titles.add(title)
+            items.append({
+                "title": title,
+                "link": link,
+                "publisher": (content.get("provider") or {}).get("displayName"),
+                "published": content.get("pubDate"),
+                "related_ticker": ticker,
+            })
+
+    items.sort(key=lambda i: i["published"] or "", reverse=True)
+    return items[:limit]
 
 
 def screener(tickers: list, benchmark: str) -> list:
@@ -144,6 +189,7 @@ def build_result(run_type: str) -> tuple[dict, bool]:
             "gold": commodity_dimension(config["commodities"]["gold"]),
         }),
         ("screener", lambda: screener(config["tickers"], config["benchmark"])),
+        ("news", lambda: news_dimension(config["vix_ticker"], config["benchmark"], config["commodities"])),
     ]:
         try:
             result[key] = fn()
@@ -151,7 +197,7 @@ def build_result(run_type: str) -> tuple[dict, bool]:
             errors.append(f"{key}: {exc}")
 
     # Publish gate (trivial for Phase 1): volatility, breadth, and
-    # commodities are required — screener is informational only.
+    # commodities are required — screener and news are informational only.
     required_ok = all(k in result for k in ("volatility", "breadth", "commodities"))
     result["publish_ok"] = required_ok
     if errors:
