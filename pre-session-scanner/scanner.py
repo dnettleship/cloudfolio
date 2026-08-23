@@ -19,6 +19,12 @@ Phase 1 scope (yfinance-only, no paid sources yet):
                  benchmark or VIX, whose feeds skew generic/market-wide) —
                  informational only, like screener, not part of the
                  publish gate
+  - Calendar:    near-term watchlist earnings dates (yfinance, free) and
+                 the next FOMC meeting date (a small hardcoded schedule,
+                 see FOMC_MEETING_DATES — same low-maintenance approach as
+                 the EIA/OPEC+ timing notes in the design doc, not a live
+                 calendar feed). Informational only, not part of the
+                 publish gate
 
 Usage:
     python3 scanner.py                    # JSON summary to stdout, writes dashboard.html
@@ -38,6 +44,14 @@ import dashboard
 CONFIG_FILE = pathlib.Path(__file__).parent / "watchlist.json"
 HISTORY_DIR = pathlib.Path(__file__).parent / "history"
 DASHBOARD_FILE = pathlib.Path(__file__).parent / "dashboard.html"
+
+# The Fed publishes each year's schedule the prior year — update this list
+# annually. Dates are the announcement/press-conference day (second day of
+# each 2-day meeting). Source: federalreserve.gov/monetarypolicy/fomccalendars.htm
+FOMC_MEETING_DATES = [
+    "2026-01-28", "2026-03-18", "2026-04-29", "2026-06-17",
+    "2026-07-29", "2026-09-16", "2026-10-28", "2026-12-09",
+]
 
 
 def load_config() -> dict:
@@ -140,6 +154,32 @@ def news_dimension(tickers: list, commodities: dict, limit: int = 8, per_ticker_
     return items[:limit]
 
 
+def calendar_dimension(tickers: list, lookahead_days: int = 14) -> dict:
+    """Near-term watchlist earnings dates and the next FOMC meeting."""
+    today = datetime.date.today()
+    horizon = today + datetime.timedelta(days=lookahead_days)
+
+    earnings = []
+    for ticker in tickers:
+        try:
+            cal = yf.Ticker(ticker).calendar or {}
+        except Exception:
+            continue
+        for raw_date in cal.get("Earnings Date") or []:
+            d = raw_date if isinstance(raw_date, datetime.date) else datetime.date.fromisoformat(str(raw_date))
+            if today <= d <= horizon:
+                earnings.append({"ticker": ticker, "date": d.isoformat()})
+                break  # one entry per ticker is enough
+    earnings.sort(key=lambda e: e["date"])
+
+    next_fomc = next(
+        (d for d in FOMC_MEETING_DATES if datetime.date.fromisoformat(d) >= today),
+        None,
+    )
+
+    return {"watchlist_earnings": earnings, "next_fomc_meeting": next_fomc}
+
+
 def screener(tickers: list, benchmark: str) -> list:
     bench_close = fetch_history(benchmark, period="1mo")["Close"].squeeze().dropna()
     bench_return_5d = (
@@ -194,6 +234,7 @@ def build_result(run_type: str) -> tuple[dict, bool]:
         }),
         ("screener", lambda: screener(config["tickers"], config["benchmark"])),
         ("news", lambda: news_dimension(config["tickers"], config["commodities"])),
+        ("calendar", lambda: calendar_dimension(config["tickers"])),
     ]:
         try:
             result[key] = fn()
@@ -201,7 +242,8 @@ def build_result(run_type: str) -> tuple[dict, bool]:
             errors.append(f"{key}: {exc}")
 
     # Publish gate (trivial for Phase 1): volatility, breadth, and
-    # commodities are required — screener and news are informational only.
+    # commodities are required — screener, news, and calendar are
+    # informational only.
     required_ok = all(k in result for k in ("volatility", "breadth", "commodities"))
     result["publish_ok"] = required_ok
     if errors:

@@ -425,16 +425,21 @@ treatment is simpler and more direct than the equity screener.
 Built earlier than the phase plan called for, once the Phase 1 dashboard
 proved the gauges/numbers alone weren't a useful read on their own. On a
 successful scan, the Lambda sends the full result dict to Claude (Haiku 4.5)
-with a prompt asking for a short prose report: 3-4 paragraphs of evidence
-(mirroring the dashboard's dimensions) followed by a labeled "Likely
-near-term bias" section — see the Amendment under Core design principle
-above for why that second part is scoped as an explicit, isolated exception
-to the no-verdict rule rather than a new signal. Failure is non-fatal: if
-the API call errors (bad/missing key, rate limit, etc.), the scan still
-returns successfully with `report_error` set instead of `report`, and the
-gauges/table still render — matching the "keep last-known-good, don't let
-one failing part take down the rest" spirit of the publish gate, even though
-this specific call sits downstream of that gate rather than inside it.
+with a prompt asking for a short prose report in three parts: 3-4 paragraphs
+of evidence covering the overall market backdrop, not just the watchlist
+(mirroring the dashboard's dimensions, plus 1-2 relevant news headlines when
+present); a short "Upcoming events" note on near-term watchlist earnings and
+the next FOMC meeting (from the `calendar` field — see Ingestion jobs
+above); then a labeled "Likely near-term bias" section for the *broader
+market*, not narrowly the watchlist — see the Amendment under Core design
+principle above for why that last part is scoped as an explicit, isolated
+exception to the no-verdict rule rather than a new signal. Failure is
+non-fatal: if the API call errors (bad/missing key, rate limit, etc.), the
+scan still returns successfully with `report_error` set instead of `report`,
+and the gauges/table still render — matching the "keep last-known-good,
+don't let one failing part take down the rest" spirit of the publish gate,
+even though this specific call sits downstream of that gate rather than
+inside it.
 
 Every successful scan (report included) is also written to a private S3
 bucket, one JSON object per run — the web-side realization of the History
