@@ -242,6 +242,21 @@
     .positive { color: var(--pos); }
     .negative { color: var(--neg); }
 
+    /* ── Report (markdown-rendered) ── */
+    .report-body { line-height: 1.6; color: var(--text); }
+    .report-body p { margin-bottom: 14px; }
+    .report-body p:last-child { margin-bottom: 0; }
+    .report-body h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-dim);
+      margin: 22px 0 10px;
+    }
+    .report-body h3:first-child { margin-top: 0; }
+    .report-body strong { color: var(--text); font-weight: 700; }
+
   </style>
 </head>
 <body>
@@ -344,7 +359,7 @@
     <div id="presession-results" class="section" style="display:none;">
       <div class="card" id="presession-report-card" style="display:none;">
         <h2>Report</h2>
-        <p id="presession-report" style="line-height:1.6; white-space:pre-wrap;"></p>
+        <div id="presession-report" class="report-body"></div>
       </div>
 
       <div class="card">
@@ -564,11 +579,32 @@
     }
   }
 
+  // Minimal, dependency-free Markdown → HTML: headers, **bold**, paragraphs.
+  // Escapes first, then only ever adds back tags we generate ourselves — the
+  // model's output can't inject arbitrary HTML through this.
+  function escapeHtml(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function inlineMarkdown(s) {
+    return s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  }
+
+  function renderReportMarkdown(text) {
+    const blocks = escapeHtml(text).trim().split(/\n\s*\n/);
+    return blocks.map(block => {
+      const line = block.trim();
+      if (line.startsWith("## ")) return `<h3>${inlineMarkdown(line.slice(3))}</h3>`;
+      if (line.startsWith("# "))  return `<h3>${inlineMarkdown(line.slice(2))}</h3>`;
+      return `<p>${inlineMarkdown(line).replace(/\n/g, "<br>")}</p>`;
+    }).join("");
+  }
+
   function renderPresessionReport(d) {
     const card = document.getElementById("presession-report-card");
     const el = document.getElementById("presession-report");
     if (d.report) {
-      el.textContent = d.report;
+      el.innerHTML = renderReportMarkdown(d.report);
       card.style.display = "";
     } else if (d.report_error) {
       el.textContent = `Report unavailable: ${d.report_error}`;
