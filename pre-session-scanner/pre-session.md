@@ -80,14 +80,16 @@ styling, alerting, backtesting).
   approach as the EIA/OPEC+ timing notes in the design doc). Informational
   only, not part of the publish gate.
 - On the Cloudfolio site (`infra/cloudfolio/frontend/index.html`): a
-  **Pre-session Scanner** tab (the "Run scan" button, live report,
-  headlines, geopolitical risk, upcoming events, leading indicators
-  (futures/yield/dollar), regime stats, oil/gold price-trend charts, and a
-  screener bar chart + table) and an **Archive**
-  tab (`GET /archive`, lists every past scan saved to S3, click to expand
-  the same report/headlines/events/charts for that scan). Charts are
-  plain inline SVG built client-side from the JSON already in the
-  response — no charting library, no server-side image generation. Nav
+  **Pre-session Scanner** tab (the "Run scan" button, then data-first —
+  leading indicators (futures/yield/dollar), regime stats, price-trend
+  charts for oil/gold *and every watchlist ticker*, and a screener bar
+  chart + table — followed by the narrative sections: live report,
+  headlines, geopolitical risk, upcoming events) and an **Archive** tab
+  (`GET /archive`, lists every past scan saved to S3, click to expand the
+  same charts/report/headlines/events for that scan, in the same
+  data-first order). Charts are plain inline SVG built client-side from
+  the JSON already in the response — no charting library, no server-side
+  image generation. Nav
   order is Pre-session Scanner → Archive → Tracker.
 
 Full design: [pre-session-equity-tool-design.md](pre-session-equity-tool-design.md)

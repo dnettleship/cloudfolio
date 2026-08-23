@@ -302,6 +302,53 @@
     <div class="error-msg" id="presession-error"></div>
 
     <div id="presession-results" class="section" style="display:none;">
+      <div class="card">
+        <h2>Leading indicators</h2>
+        <p style="color:var(--text-dim); font-size:0.85rem; margin-bottom:14px;">
+          Pre-market futures and cross-asset context — level + latest-session change, not percentile-scored.
+        </p>
+        <div class="summary-grid" id="presession-futures-grid"></div>
+      </div>
+
+      <div class="card">
+        <h2>Regime</h2>
+        <div class="summary-grid" id="presession-summary-grid"></div>
+      </div>
+
+      <div class="card">
+        <h2>Price trend (90 sessions)</h2>
+        <div class="chart-grid">
+          <div>
+            <div class="stat-label" style="margin-bottom:8px;">Oil</div>
+            <div class="chart-box" id="presession-oil-chart"></div>
+          </div>
+          <div>
+            <div class="stat-label" style="margin-bottom:8px;">Gold</div>
+            <div class="chart-box" id="presession-gold-chart"></div>
+          </div>
+        </div>
+        <h2 class="mt">Watchlist</h2>
+        <div class="chart-grid" id="presession-watchlist-charts"></div>
+      </div>
+
+      <div class="card">
+        <h2>Screener — watchlist</h2>
+        <div class="chart-box" id="presession-screener-chart" style="margin-bottom:20px;"></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Ticker</th>
+                <th>Gap %</th>
+                <th>5d return %</th>
+                <th>Rel. strength (pp)</th>
+              </tr>
+            </thead>
+            <tbody id="presession-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="card" id="presession-report-card" style="display:none;">
         <h2>Report</h2>
         <div id="presession-report" class="report-body"></div>
@@ -323,48 +370,6 @@
       <div class="card">
         <h2>Upcoming events</h2>
         <div class="headline-list" id="presession-calendar"></div>
-      </div>
-
-      <div class="card">
-        <h2>Leading indicators</h2>
-        <p style="color:var(--text-dim); font-size:0.85rem; margin-bottom:14px;">
-          Pre-market futures and cross-asset context — level + latest-session change, not percentile-scored.
-        </p>
-        <div class="summary-grid" id="presession-futures-grid"></div>
-      </div>
-
-      <div class="card">
-        <h2>Regime</h2>
-        <div class="summary-grid" id="presession-summary-grid"></div>
-        <h2 class="mt">Price trend — oil &amp; gold (90 sessions)</h2>
-        <div class="chart-grid">
-          <div>
-            <div class="stat-label" style="margin-bottom:8px;">Oil</div>
-            <div class="chart-box" id="presession-oil-chart"></div>
-          </div>
-          <div>
-            <div class="stat-label" style="margin-bottom:8px;">Gold</div>
-            <div class="chart-box" id="presession-gold-chart"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Screener — watchlist</h2>
-        <div class="chart-box" id="presession-screener-chart" style="margin-bottom:20px;"></div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Ticker</th>
-                <th>Gap %</th>
-                <th>5d return %</th>
-                <th>Rel. strength (pp)</th>
-              </tr>
-            </thead>
-            <tbody id="presession-table-body"></tbody>
-          </table>
-        </div>
       </div>
     </div>
   </div>
@@ -643,6 +648,7 @@
       renderCalendar("presession-calendar", data.calendar || {});
       renderPriceTrendChart("presession-oil-chart", ((data.commodities || {}).oil || {}).price_history || []);
       renderPriceTrendChart("presession-gold-chart", ((data.commodities || {}).gold || {}).price_history || []);
+      renderWatchlistCharts("presession-watchlist-charts", data.screener || []);
       renderScreenerBarChart("presession-screener-chart", data.screener || []);
       results.style.display = "";
       results.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -790,6 +796,22 @@
         <span>${history[history.length - 1].date}</span>
       </div>
     `;
+  }
+
+  function renderWatchlistCharts(elId, rows) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (!rows || !rows.length) {
+      el.innerHTML = `<p style="color:var(--text-dim); font-size:0.85rem;">No watchlist data.</p>`;
+      return;
+    }
+    el.innerHTML = rows.map(r => `
+      <div>
+        <div class="stat-label" style="margin-bottom:8px;">${escapeHtml(r.ticker || "")}</div>
+        <div class="chart-box" id="${elId}-${r.ticker}"></div>
+      </div>
+    `).join("");
+    rows.forEach(r => renderPriceTrendChart(`${elId}-${r.ticker}`, r.price_history || []));
   }
 
   function renderScreenerBarChart(elId, rows) {
@@ -983,14 +1005,7 @@
       : `<p style="color:var(--text-dim);">${item.report_error ? "Report unavailable: " + item.report_error : "No report for this scan."}</p>`;
 
     el.innerHTML = `
-      ${reportHtml}
-      <h2 class="mt">Headlines</h2>
-      <div class="headline-list" id="${prefix}-headlines"></div>
-      <h2 class="mt">Geopolitical risk</h2>
-      <div class="headline-list" id="${prefix}-geopolitical"></div>
-      <h2 class="mt">Upcoming events</h2>
-      <div class="headline-list" id="${prefix}-calendar"></div>
-      <h2 class="mt">Price trend — oil &amp; gold (90 sessions)</h2>
+      <h2>Price trend (90 sessions)</h2>
       <div class="chart-grid">
         <div>
           <div class="stat-label" style="margin-bottom:8px;">Oil</div>
@@ -1001,17 +1016,28 @@
           <div class="chart-box" id="${prefix}-gold-chart"></div>
         </div>
       </div>
+      <h2 class="mt">Watchlist</h2>
+      <div class="chart-grid" id="${prefix}-watchlist-charts"></div>
       <h2 class="mt">Screener — relative strength (pp)</h2>
       <div class="chart-box" id="${prefix}-screener-chart"></div>
+      <h2 class="mt">Report</h2>
+      ${reportHtml}
+      <h2 class="mt">Headlines</h2>
+      <div class="headline-list" id="${prefix}-headlines"></div>
+      <h2 class="mt">Geopolitical risk</h2>
+      <div class="headline-list" id="${prefix}-geopolitical"></div>
+      <h2 class="mt">Upcoming events</h2>
+      <div class="headline-list" id="${prefix}-calendar"></div>
     `;
     el.style.display = "";
 
+    renderPriceTrendChart(`${prefix}-oil-chart`, ((item.commodities || {}).oil || {}).price_history || []);
+    renderPriceTrendChart(`${prefix}-gold-chart`, ((item.commodities || {}).gold || {}).price_history || []);
+    renderWatchlistCharts(`${prefix}-watchlist-charts`, item.screener || []);
+    renderScreenerBarChart(`${prefix}-screener-chart`, item.screener || []);
     renderHeadlines(`${prefix}-headlines`, newsHeadlines(item.news));
     renderHeadlines(`${prefix}-geopolitical`, newsGeopolitical(item.news), "Nothing notable.");
     renderCalendar(`${prefix}-calendar`, item.calendar || {});
-    renderPriceTrendChart(`${prefix}-oil-chart`, ((item.commodities || {}).oil || {}).price_history || []);
-    renderPriceTrendChart(`${prefix}-gold-chart`, ((item.commodities || {}).gold || {}).price_history || []);
-    renderScreenerBarChart(`${prefix}-screener-chart`, item.screener || []);
   }
 
   // ── Shared utilities ────────────────────────────────────────────────────────
