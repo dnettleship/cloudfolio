@@ -15,11 +15,10 @@ Phase 1 scope (yfinance-only, no paid sources yet):
                  plus a trailing 90-session price history for charting
   - Screener:    overnight gap % and 5-day relative strength vs benchmark,
                  for the static watchlist
-  - News:        recent headlines for the benchmark, VIX, oil and gold —
+  - News:        recent headlines for the watchlist and oil/gold (not the
+                 benchmark or VIX, whose feeds skew generic/market-wide) —
                  informational only, like screener, not part of the
-                 publish gate. Scoped to these four tickers rather than
-                 the whole watchlist to keep the yfinance call count
-                 bounded (see build_result)
+                 publish gate
 
 Usage:
     python3 scanner.py                    # JSON summary to stdout, writes dashboard.html
@@ -102,22 +101,26 @@ def commodity_dimension(ticker: str) -> dict:
     }
 
 
-def news_dimension(vix_ticker: str, benchmark: str, commodities: dict, limit: int = 8) -> list:
-    """Recent headlines for market-wide tickers.
+def news_dimension(tickers: list, commodities: dict, limit: int = 8, per_ticker_limit: int = 2) -> list:
+    """Recent headlines for the watchlist and commodities only.
 
-    Scoped to the benchmark, VIX, oil and gold — not the full watchlist —
-    to keep the yfinance call count bounded (build_result already makes
-    roughly two calls per watchlist ticker for breadth and screener).
+    Deliberately excludes the benchmark and VIX — their yfinance news feeds
+    lean generic/market-wide (personal-finance pieces, unrelated-sector
+    stories) rather than anything tied to a specific holding. Each source
+    ticker is capped at per_ticker_limit so one particularly newsy name
+    can't crowd out the rest before the global limit is applied.
     """
-    tickers = [benchmark, vix_ticker, commodities["oil"], commodities["gold"]]
     seen_titles = set()
     items = []
-    for ticker in tickers:
+    for ticker in list(tickers) + [commodities["oil"], commodities["gold"]]:
         try:
             raw = yf.Ticker(ticker).news or []
         except Exception:
             continue
+        taken = 0
         for entry in raw:
+            if taken >= per_ticker_limit:
+                break
             content = entry.get("content", {})
             title = content.get("title")
             link = (content.get("clickThroughUrl") or {}).get("url")
@@ -131,6 +134,7 @@ def news_dimension(vix_ticker: str, benchmark: str, commodities: dict, limit: in
                 "published": content.get("pubDate"),
                 "related_ticker": ticker,
             })
+            taken += 1
 
     items.sort(key=lambda i: i["published"] or "", reverse=True)
     return items[:limit]
@@ -189,7 +193,7 @@ def build_result(run_type: str) -> tuple[dict, bool]:
             "gold": commodity_dimension(config["commodities"]["gold"]),
         }),
         ("screener", lambda: screener(config["tickers"], config["benchmark"])),
-        ("news", lambda: news_dimension(config["vix_ticker"], config["benchmark"], config["commodities"])),
+        ("news", lambda: news_dimension(config["tickers"], config["commodities"])),
     ]:
         try:
             result[key] = fn()
