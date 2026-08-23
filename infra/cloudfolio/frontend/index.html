@@ -160,6 +160,21 @@
     }
     .btn-add:hover { border-color: var(--accent); color: var(--accent); }
 
+    .btn-toggle {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: none;
+      letter-spacing: normal;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
     .btn-generate {
       background: var(--accent);
       color: #fff;
@@ -327,8 +342,11 @@
             <div class="chart-box" id="presession-gold-chart"></div>
           </div>
         </div>
-        <h2 class="mt">Watchlist</h2>
-        <div class="chart-grid" id="presession-watchlist-charts"></div>
+        <h2 class="mt" style="display:flex; align-items:center; justify-content:space-between;">
+          <span>Watchlist</span>
+          <button class="btn-toggle" onclick="toggleCollapse('presession-watchlist-charts', this)">Show ▸</button>
+        </h2>
+        <div class="chart-grid" id="presession-watchlist-charts" style="display:none;"></div>
       </div>
 
       <div class="card">
@@ -1016,8 +1034,11 @@
           <div class="chart-box" id="${prefix}-gold-chart"></div>
         </div>
       </div>
-      <h2 class="mt">Watchlist</h2>
-      <div class="chart-grid" id="${prefix}-watchlist-charts"></div>
+      <h2 class="mt" style="display:flex; align-items:center; justify-content:space-between;">
+        <span>Watchlist</span>
+        <button class="btn-toggle" onclick="toggleCollapse('${prefix}-watchlist-charts', this)">Show ▸</button>
+      </h2>
+      <div class="chart-grid" id="${prefix}-watchlist-charts" style="display:none;"></div>
       <h2 class="mt">Screener — relative strength (pp)</h2>
       <div class="chart-box" id="${prefix}-screener-chart"></div>
       <h2 class="mt">Report</h2>
@@ -1051,6 +1072,14 @@
     const el = document.getElementById(id);
     el.textContent = msg;
     el.style.display = "block";
+  }
+
+  function toggleCollapse(id, btn) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const hidden = el.style.display === "none";
+    el.style.display = hidden ? "" : "none";
+    if (btn) btn.textContent = hidden ? "Hide ▾" : "Show ▸";
   }
 </script>
 
