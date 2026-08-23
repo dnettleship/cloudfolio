@@ -313,6 +313,14 @@
       </div>
 
       <div class="card">
+        <h2>Geopolitical risk</h2>
+        <p style="color:var(--text-dim); font-size:0.85rem; margin-bottom:14px;">
+          Keyword-matched from the headlines above — a pointer, not a verified classification.
+        </p>
+        <div class="headline-list" id="presession-geopolitical"></div>
+      </div>
+
+      <div class="card">
         <h2>Upcoming events</h2>
         <div class="headline-list" id="presession-calendar"></div>
       </div>
@@ -621,7 +629,8 @@
       renderPresessionReport(data);
       renderPresessionSummary(data);
       renderPresessionTable(data.screener || []);
-      renderHeadlines("presession-headlines", data.news || []);
+      renderHeadlines("presession-headlines", newsHeadlines(data.news));
+      renderHeadlines("presession-geopolitical", newsGeopolitical(data.news), "Nothing notable.");
       renderCalendar("presession-calendar", data.calendar || {});
       renderPriceTrendChart("presession-oil-chart", ((data.commodities || {}).oil || {}).price_history || []);
       renderPriceTrendChart("presession-gold-chart", ((data.commodities || {}).gold || {}).price_history || []);
@@ -794,11 +803,21 @@
     return `${Math.round(diffH / 24)}d ago`;
   }
 
-  function renderHeadlines(elId, items) {
+  // news_dimension moved from a flat list to {headlines, geopolitical} —
+  // these fall back to the old shape so archived scans from before that
+  // change still render.
+  function newsHeadlines(news) {
+    return Array.isArray(news) ? news : (news || {}).headlines || [];
+  }
+  function newsGeopolitical(news) {
+    return Array.isArray(news) ? [] : (news || {}).geopolitical || [];
+  }
+
+  function renderHeadlines(elId, items, emptyText = "No headlines.") {
     const el = document.getElementById(elId);
     if (!el) return;
     if (!items || !items.length) {
-      el.innerHTML = `<p style="color:var(--text-dim); font-size:0.85rem;">No headlines.</p>`;
+      el.innerHTML = `<p style="color:var(--text-dim); font-size:0.85rem;">${escapeHtml(emptyText)}</p>`;
       return;
     }
     el.innerHTML = items.map(item => {
@@ -832,12 +851,27 @@
     if (!el) return;
     const earnings = (calendar || {}).watchlist_earnings || [];
     const fomc = (calendar || {}).next_fomc_meeting;
-    const rows = earnings.map(e => `
-      <div class="headline-item">
-        <span class="title">${escapeHtml(e.ticker)} earnings</span>
-        <div class="headline-meta">${escapeHtml(e.date)} &middot; ${escapeHtml(daysUntil(e.date))}</div>
-      </div>
-    `);
+    const rows = earnings.map(e => {
+      const safeLink = typeof e.analysis_url === "string" && /^https:\/\/finance\.yahoo\.com\//i.test(e.analysis_url)
+        ? e.analysis_url : null;
+      const titleHtml = safeLink
+        ? `<a href="${escapeAttr(safeLink)}" target="_blank" rel="noopener noreferrer">${escapeHtml(e.ticker)} earnings</a>`
+        : `<span class="title">${escapeHtml(e.ticker)} earnings</span>`;
+      let epsText = "";
+      if (typeof e.eps_estimate_avg === "number") {
+        epsText = `EPS est ${e.eps_estimate_avg.toFixed(2)}`;
+        if (typeof e.eps_estimate_low === "number" && typeof e.eps_estimate_high === "number") {
+          epsText += ` (${e.eps_estimate_low.toFixed(2)}–${e.eps_estimate_high.toFixed(2)})`;
+        }
+      }
+      const metaParts = [e.date, daysUntil(e.date), epsText].filter(Boolean).map(escapeHtml);
+      return `
+        <div class="headline-item">
+          ${titleHtml}
+          <div class="headline-meta">${metaParts.join(" &middot; ")}</div>
+        </div>
+      `;
+    });
     if (fomc) {
       rows.push(`
         <div class="headline-item">
@@ -912,6 +946,8 @@
       ${reportHtml}
       <h2 class="mt">Headlines</h2>
       <div class="headline-list" id="${prefix}-headlines"></div>
+      <h2 class="mt">Geopolitical risk</h2>
+      <div class="headline-list" id="${prefix}-geopolitical"></div>
       <h2 class="mt">Upcoming events</h2>
       <div class="headline-list" id="${prefix}-calendar"></div>
       <h2 class="mt">Price trend — oil &amp; gold (90 sessions)</h2>
@@ -930,7 +966,8 @@
     `;
     el.style.display = "";
 
-    renderHeadlines(`${prefix}-headlines`, item.news || []);
+    renderHeadlines(`${prefix}-headlines`, newsHeadlines(item.news));
+    renderHeadlines(`${prefix}-geopolitical`, newsGeopolitical(item.news), "Nothing notable.");
     renderCalendar(`${prefix}-calendar`, item.calendar || {});
     renderPriceTrendChart(`${prefix}-oil-chart`, ((item.commodities || {}).oil || {}).price_history || []);
     renderPriceTrendChart(`${prefix}-gold-chart`, ((item.commodities || {}).gold || {}).price_history || []);
