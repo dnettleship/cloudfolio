@@ -282,6 +282,24 @@
     }
     .report-body h3:first-child { margin-top: 0; }
     .report-body strong { color: var(--text); font-weight: 700; }
+    .report-body ul { margin: 0 0 14px; padding-left: 0; list-style: none; }
+    .report-body ul:last-child { margin-bottom: 0; }
+    .report-body li {
+      position: relative;
+      padding-left: 18px;
+      margin-bottom: 6px;
+    }
+    .report-body li:last-child { margin-bottom: 0; }
+    .report-body li::before {
+      content: "";
+      position: absolute;
+      left: 4px;
+      top: 0.6em;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
 
   </style>
 </head>
@@ -694,6 +712,10 @@
       const line = block.trim();
       if (line.startsWith("## ")) return `<h3>${inlineMarkdown(line.slice(3))}</h3>`;
       if (line.startsWith("# "))  return `<h3>${inlineMarkdown(line.slice(2))}</h3>`;
+      const lines = line.split("\n").map(l => l.trim());
+      if (lines.length && lines.every(l => l.startsWith("- "))) {
+        return `<ul>${lines.map(l => `<li>${inlineMarkdown(l.slice(2))}</li>`).join("")}</ul>`;
+      }
       return `<p>${inlineMarkdown(line).replace(/\n/g, "<br>")}</p>`;
     }).join("");
   }

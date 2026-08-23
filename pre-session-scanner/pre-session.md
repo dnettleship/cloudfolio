@@ -51,10 +51,14 @@ styling, alerting, backtesting).
 - `report.py` turns a scan's data into a short written report via Claude
   (Haiku 4.5) — the Lambda calls it after every successful scan; the CLI
   does not (JSON/dashboard.html only, no API key wired up locally yet). The
-  report is four parts: overall market conditions (not just the
-  watchlist), a geopolitical-risk note, an upcoming-events note, then a
+  report is five parts: overall market conditions (not just the
+  watchlist), a geopolitical-risk note, an upcoming-events note, a
   labeled "Likely near-term bias" call for the *broader market* — the
-  watchlist screener is supporting color for that call, not its basis.
+  watchlist screener is supporting color for that call, not its basis —
+  then a "Key drivers" bullet list naming the 2-3 specific metrics (with
+  their exact readings) behind that call, broken out as its own section
+  rather than folded into the bias paragraph. The prompt explicitly bars
+  trading advice in every part, not just the bias call.
 - `scanner.py` also fetches recent headlines (via yfinance's free `.news`
   property, scoped to the watchlist and oil/gold — deliberately excluding
   the benchmark and VIX, whose feeds skew generic/market-wide rather than
