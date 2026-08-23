@@ -219,6 +219,17 @@
 
     #chart-img { width: 100%; border-radius: 8px; }
 
+    /* ── Inline SVG charts ── */
+    .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+    .chart-box svg { display: block; }
+
+    /* ── Headlines ── */
+    .headline-list { display: flex; flex-direction: column; gap: 12px; }
+    .headline-item a { color: var(--text); text-decoration: none; font-weight: 600; font-size: 0.88rem; }
+    .headline-item a:hover { color: var(--accent); }
+    .headline-item span.title { color: var(--text); font-weight: 600; font-size: 0.88rem; }
+    .headline-meta { font-size: 0.78rem; color: var(--text-dim); margin-top: 2px; }
+
     /* ── Tables ── */
     .table-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
@@ -297,12 +308,29 @@
       </div>
 
       <div class="card">
+        <h2>Headlines</h2>
+        <div class="headline-list" id="presession-headlines"></div>
+      </div>
+
+      <div class="card">
         <h2>Regime</h2>
         <div class="summary-grid" id="presession-summary-grid"></div>
+        <h2 class="mt">Price trend — oil &amp; gold (90 sessions)</h2>
+        <div class="chart-grid">
+          <div>
+            <div class="stat-label" style="margin-bottom:8px;">Oil</div>
+            <div class="chart-box" id="presession-oil-chart"></div>
+          </div>
+          <div>
+            <div class="stat-label" style="margin-bottom:8px;">Gold</div>
+            <div class="chart-box" id="presession-gold-chart"></div>
+          </div>
+        </div>
       </div>
 
       <div class="card">
         <h2>Screener — watchlist</h2>
+        <div class="chart-box" id="presession-screener-chart" style="margin-bottom:20px;"></div>
         <div class="table-wrap">
           <table>
             <thead>
@@ -588,6 +616,10 @@
       renderPresessionReport(data);
       renderPresessionSummary(data);
       renderPresessionTable(data.screener || []);
+      renderHeadlines("presession-headlines", data.news || []);
+      renderPriceTrendChart("presession-oil-chart", ((data.commodities || {}).oil || {}).price_history || []);
+      renderPriceTrendChart("presession-gold-chart", ((data.commodities || {}).gold || {}).price_history || []);
+      renderScreenerBarChart("presession-screener-chart", data.screener || []);
       results.style.display = "";
       results.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (err) {
@@ -673,6 +705,112 @@
     `).join("");
   }
 
+  // ── Inline SVG charts (no chart library — keeps the site dependency-free) ──
+
+  function renderPriceTrendChart(elId, history) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (!history || !history.length) {
+      el.innerHTML = `<p style="color:var(--text-dim); font-size:0.85rem;">No history.</p>`;
+      return;
+    }
+    const w = 400, h = 110, pad = 6;
+    const prices = history.map(p => p.close);
+    const min = Math.min(...prices), max = Math.max(...prices);
+    const range = max - min || 1;
+    const points = history.map((p, i) => {
+      const x = pad + (i / Math.max(1, history.length - 1)) * (w - 2 * pad);
+      const y = pad + (1 - (p.close - min) / range) * (h - 2 * pad);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(" ");
+    const pctChange = ((prices[prices.length - 1] - prices[0]) / prices[0]) * 100;
+    const rising = pctChange >= 0;
+    el.innerHTML = `
+      <svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none">
+        <polyline points="${points}" fill="none" style="stroke:${rising ? "var(--pos)" : "var(--neg)"}; stroke-width:2;" />
+      </svg>
+      <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-dim); margin-top:4px;">
+        <span>${history[0].date}</span>
+        <span class="${colorClass(pctChange)}">${fmt(pctChange)}%</span>
+        <span>${history[history.length - 1].date}</span>
+      </div>
+    `;
+  }
+
+  function renderScreenerBarChart(elId, rows) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (!rows || !rows.length) { el.innerHTML = ""; return; }
+    const barH = 20, gap = 8, labelW = 64, chartW = 300, sidePad = 60, valueLabelReserve = 44;
+    const values = rows.map(r => r.relative_strength_vs_benchmark_pp ?? 0);
+    const maxAbs = Math.max(1, ...values.map(v => Math.abs(v)));
+    // Reserve room at the outer edge of each bar's max extent so the pp value
+    // label never collides with the ticker label column on the largest bar.
+    const scale = (chartW / 2 - valueLabelReserve) / maxAbs;
+    const midX = labelW + chartW / 2;
+    const totalW = labelW + chartW + sidePad;
+    const height = rows.length * (barH + gap);
+    const bars = rows.map((r, i) => {
+      const v = r.relative_strength_vs_benchmark_pp ?? 0;
+      const y = i * (barH + gap);
+      const barW = Math.abs(v) * scale;
+      const x = v >= 0 ? midX : midX - barW;
+      const valX = v >= 0 ? midX + barW + 6 : midX - barW - 6;
+      const anchor = v >= 0 ? "start" : "end";
+      return `
+        <text x="${labelW - 8}" y="${y + barH / 2 + 4}" text-anchor="end" font-size="11" fill="var(--text-dim)">${escapeHtml(r.ticker || "")}</text>
+        <rect x="${x.toFixed(1)}" y="${y}" width="${barW.toFixed(1)}" height="${barH}" rx="3" style="fill:${v >= 0 ? "var(--pos)" : "var(--neg)"};" />
+        <text x="${valX.toFixed(1)}" y="${y + barH / 2 + 4}" text-anchor="${anchor}" font-size="11" fill="var(--text-dim)">${fmt(v)}pp</text>
+      `;
+    }).join("");
+    el.innerHTML = `
+      <svg viewBox="0 0 ${totalW} ${height}" width="100%" height="${height}">
+        <line x1="${midX}" y1="0" x2="${midX}" y2="${height}" style="stroke:var(--border); stroke-width:1;" />
+        ${bars}
+      </svg>
+    `;
+  }
+
+  // ── Headlines ───────────────────────────────────────────────────────────────
+
+  function escapeAttr(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function timeAgo(iso) {
+    const then = new Date(iso);
+    if (isNaN(then)) return "";
+    const diffMin = Math.round((Date.now() - then.getTime()) / 60000);
+    if (diffMin < 1) return "just now";
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffH = Math.round(diffMin / 60);
+    if (diffH < 24) return `${diffH}h ago`;
+    return `${Math.round(diffH / 24)}d ago`;
+  }
+
+  function renderHeadlines(elId, items) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (!items || !items.length) {
+      el.innerHTML = `<p style="color:var(--text-dim); font-size:0.85rem;">No headlines.</p>`;
+      return;
+    }
+    el.innerHTML = items.map(item => {
+      const safeLink = typeof item.link === "string" && /^https?:\/\//i.test(item.link) ? item.link : null;
+      const titleHtml = safeLink
+        ? `<a href="${escapeAttr(safeLink)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.title || "")}</a>`
+        : `<span class="title">${escapeHtml(item.title || "")}</span>`;
+      const metaParts = [item.publisher, item.related_ticker, item.published ? timeAgo(item.published) : null]
+        .filter(Boolean).map(escapeHtml);
+      return `
+        <div class="headline-item">
+          ${titleHtml}
+          <div class="headline-meta">${metaParts.join(" &middot; ")}</div>
+        </div>
+      `;
+    }).join("");
+  }
+
   // ── Archive ─────────────────────────────────────────────────────────────────
 
   let archiveItems = [];
@@ -725,10 +863,35 @@
       return;
     }
     const item = archiveItems[i];
-    el.innerHTML = item.report
+    const prefix = `archive-${i}`;
+    const reportHtml = item.report
       ? renderReportMarkdown(item.report)
       : `<p style="color:var(--text-dim);">${item.report_error ? "Report unavailable: " + item.report_error : "No report for this scan."}</p>`;
+
+    el.innerHTML = `
+      ${reportHtml}
+      <h2 class="mt">Headlines</h2>
+      <div class="headline-list" id="${prefix}-headlines"></div>
+      <h2 class="mt">Price trend — oil &amp; gold (90 sessions)</h2>
+      <div class="chart-grid">
+        <div>
+          <div class="stat-label" style="margin-bottom:8px;">Oil</div>
+          <div class="chart-box" id="${prefix}-oil-chart"></div>
+        </div>
+        <div>
+          <div class="stat-label" style="margin-bottom:8px;">Gold</div>
+          <div class="chart-box" id="${prefix}-gold-chart"></div>
+        </div>
+      </div>
+      <h2 class="mt">Screener — relative strength (pp)</h2>
+      <div class="chart-box" id="${prefix}-screener-chart"></div>
+    `;
     el.style.display = "";
+
+    renderHeadlines(`${prefix}-headlines`, item.news || []);
+    renderPriceTrendChart(`${prefix}-oil-chart`, ((item.commodities || {}).oil || {}).price_history || []);
+    renderPriceTrendChart(`${prefix}-gold-chart`, ((item.commodities || {}).gold || {}).price_history || []);
+    renderScreenerBarChart(`${prefix}-screener-chart`, item.screener || []);
   }
 
   // ── Shared utilities ────────────────────────────────────────────────────────

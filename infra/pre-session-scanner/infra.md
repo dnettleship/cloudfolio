@@ -115,9 +115,11 @@ not the file-writing `dashboard.write()`.
 
 ## Lambda notes
 
-- **Memory**: 512 MB (no matplotlib/chart rendering here, unlike cloudfolio)
-- **Timeout**: 180s — ~20 sequential `yfinance` calls (VIX, watchlist breadth,
-  oil/gold, screener); no batching yet, matching `scanner.py`'s CLI-simple style
+- **Memory**: 512 MB (no matplotlib/chart rendering here — the site's charts
+  are client-side SVG built from this JSON, not server-generated images)
+- **Timeout**: 180s — ~28 sequential `yfinance` calls (VIX, watchlist breadth,
+  oil/gold incl. 90-session price history, screener, news for benchmark/VIX/
+  oil/gold); no batching yet, matching `scanner.py`'s CLI-simple style
 
 See [../../pre-session-scanner/pre-session.md](../../pre-session-scanner/pre-session.md)
 for the tool itself and [../README.md](../README.md) for the shared infra layout.
