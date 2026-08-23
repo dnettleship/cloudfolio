@@ -1,6 +1,6 @@
 {
   "tickers": [
-    "NVDA", "NFLX", "META", "AMZN", "MSFT", "GOOGL", "CRM", "CRWD", "MU", "PLTR"
+    "NVDA", "NFLX", "META", "AMZN", "MSFT", "GOOGL", "SPCX", "CRWD", "MU", "PLTR"
   ],
   "benchmark": "VWRP.L",
   "vix_ticker": "^VIX",
