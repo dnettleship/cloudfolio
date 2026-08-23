@@ -29,6 +29,16 @@ underlying evidence, that's a design smell — stop and keep them separable.
 The tool's job is to inform a human decision (or a separate rules-based
 system), not to replace one.
 
+**Amendment (2026-08-23):** the written report (see the report-generation
+addition under Dashboard + log, below) deliberately breaks this principle in
+one place — it ends with a labeled "Likely near-term bias" section giving a
+directional call (Bullish/Bearish/Neutral) and a confidence level, on
+explicit request. This is a heuristic read with no verified track record,
+not a second signal source — it does not feed back into scoring, the
+screener, or anything upstream, and it is kept visually and structurally
+separate from the evidence sections above it. Every other component in this
+document still follows the no-verdict rule as written.
+
 ## Architecture overview
 
 ```
@@ -409,6 +419,22 @@ treatment is simpler and more direct than the equity screener.
   textual — calendar event names and times, headline snippets, ticker
   symbols — rather than forcing those into a chart where it wouldn't
   help.
+
+### Written report (implemented, ahead of the phases below)
+
+Built earlier than the phase plan called for, once the Phase 1 dashboard
+proved the gauges/numbers alone weren't a useful read on their own. On a
+successful scan, the Lambda sends the full result dict to Claude (Haiku 4.5)
+with a prompt asking for a short prose report: 3-4 paragraphs of evidence
+(mirroring the dashboard's dimensions) followed by a labeled "Likely
+near-term bias" section — see the Amendment under Core design principle
+above for why that second part is scoped as an explicit, isolated exception
+to the no-verdict rule rather than a new signal. Failure is non-fatal: if
+the API call errors (bad/missing key, rate limit, etc.), the scan still
+returns successfully with `report_error` set instead of `report`, and the
+gauges/table still render — matching the "keep last-known-good, don't let
+one failing part take down the rest" spirit of the publish gate, even though
+this specific call sits downstream of that gate rather than inside it.
 
 ## Engineering considerations
 

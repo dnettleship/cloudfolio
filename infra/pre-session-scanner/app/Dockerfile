@@ -7,6 +7,7 @@ RUN pip install -r /tmp/requirements.txt --no-cache-dir
 # Reuse the scanner source directly — no separate Lambda-side reimplementation.
 COPY pre-session-scanner/scanner.py /var/task/scanner.py
 COPY pre-session-scanner/dashboard.py /var/task/dashboard.py
+COPY pre-session-scanner/report.py /var/task/report.py
 COPY pre-session-scanner/watchlist.json /var/task/watchlist.json
 
 # Copy handler

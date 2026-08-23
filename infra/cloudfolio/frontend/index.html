@@ -342,6 +342,11 @@
     <div class="error-msg" id="presession-error"></div>
 
     <div id="presession-results" class="section" style="display:none;">
+      <div class="card" id="presession-report-card" style="display:none;">
+        <h2>Report</h2>
+        <p id="presession-report" style="line-height:1.6; white-space:pre-wrap;"></p>
+      </div>
+
       <div class="card">
         <h2>Regime</h2>
         <div class="summary-grid" id="presession-summary-grid"></div>
@@ -547,6 +552,7 @@
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       if (!data.publish_ok) throw new Error("Publish gate failed — required data missing: " + (data.errors || []).join("; "));
 
+      renderPresessionReport(data);
       renderPresessionSummary(data);
       renderPresessionTable(data.screener || []);
       results.style.display = "";
@@ -555,6 +561,20 @@
       showError("presession-error", `Error: ${err.message}`);
     } finally {
       setLoading(btn, spinner, false);
+    }
+  }
+
+  function renderPresessionReport(d) {
+    const card = document.getElementById("presession-report-card");
+    const el = document.getElementById("presession-report");
+    if (d.report) {
+      el.textContent = d.report;
+      card.style.display = "";
+    } else if (d.report_error) {
+      el.textContent = `Report unavailable: ${d.report_error}`;
+      card.style.display = "";
+    } else {
+      card.style.display = "none";
     }
   }
 

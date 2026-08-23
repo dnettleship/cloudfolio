@@ -37,6 +37,27 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+resource "aws_iam_role_policy" "lambda_secrets" {
+  name = "${var.project}-secrets-read"
+  role = aws_iam_role.lambda.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = "secretsmanager:GetSecretValue"
+      Resource = aws_secretsmanager_secret.anthropic_api_key.arn
+    }]
+  })
+}
+
+# ── Secrets ──────────────────────────────────────────────────────────────────
+
+# Value is set out-of-band via `aws secretsmanager put-secret-value` — never
+# committed to Terraform state as a secret_version resource.
+resource "aws_secretsmanager_secret" "anthropic_api_key" {
+  name = "${var.project}-anthropic-api-key"
+}
+
 # ── Lambda ───────────────────────────────────────────────────────────────────
 
 resource "aws_lambda_function" "app" {
@@ -49,6 +70,12 @@ resource "aws_lambda_function" "app" {
   # screener) — no matplotlib rendering here, but leaves headroom over the
   # local run time for a cold Lambda network path.
   timeout = 180
+
+  environment {
+    variables = {
+      ANTHROPIC_API_KEY_SECRET_NAME = aws_secretsmanager_secret.anthropic_api_key.name
+    }
+  }
 }
 
 # ── API Gateway ───────────────────────────────────────────────────────────────
