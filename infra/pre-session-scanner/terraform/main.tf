@@ -159,6 +159,15 @@ resource "aws_apigatewayv2_stage" "default" {
   api_id      = aws_apigatewayv2_api.app.id
   name        = "$default"
   auto_deploy = true
+
+  # Unauthenticated public API — /scan is expensive (~20 sequential yfinance
+  # calls plus a Claude Haiku report call per request), so this caps runaway
+  # or scripted traffic. Not per-IP, just an overall ceiling since there's no
+  # WAF/usage plan in front of this.
+  default_route_settings {
+    throttling_burst_limit = 2
+    throttling_rate_limit  = 1
+  }
 }
 
 resource "aws_lambda_permission" "apigw" {

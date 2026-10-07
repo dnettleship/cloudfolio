@@ -15,6 +15,7 @@ from datetime import date, timedelta
 
 
 FOREX_PAIR = "GBPUSD=X"
+MAX_TICKERS = 20
 
 PALETTE = [
     "#00A4EF", "#1877F2", "#FF9900", "#2ECC71",
@@ -209,6 +210,13 @@ def handle_report(body: dict) -> dict:
             "statusCode": 400,
             "headers": CORS_HEADERS,
             "body": json.dumps({"error": "At least one ticker is required"}),
+        }
+
+    if len(tickers) > MAX_TICKERS:
+        return {
+            "statusCode": 400,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"error": f"At most {MAX_TICKERS} tickers are allowed per request"}),
         }
 
     rows, summary = build_table(tickers, index, days)

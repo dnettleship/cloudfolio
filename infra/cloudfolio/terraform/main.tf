@@ -89,6 +89,14 @@ resource "aws_apigatewayv2_stage" "default" {
   api_id      = aws_apigatewayv2_api.app.id
   name        = "$default"
   auto_deploy = true
+
+  # Unauthenticated public API — caps runaway/scripted traffic (each /report
+  # call runs several sequential yfinance fetches). Not per-IP, just an
+  # overall ceiling since there's no WAF/usage plan in front of this.
+  default_route_settings {
+    throttling_burst_limit = 10
+    throttling_rate_limit  = 5
+  }
 }
 
 resource "aws_lambda_permission" "apigw" {
