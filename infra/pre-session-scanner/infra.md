@@ -32,17 +32,20 @@ design doc's no-verdict principle — see the Amendment in
 `pre-session-equity-tool-design.md`). Failure is non-fatal: the scan still
 returns successfully with `report_error` set instead of `report`.
 
-The Anthropic API key lives in AWS Secrets Manager
-(`pre-session-scanner-anthropic-api-key`), read by the Lambda at request
+The Anthropic API key lives in AWS SSM Parameter Store as a SecureString
+(`/pre-session-scanner/anthropic-api-key`), read by the Lambda at request
 time (`_get_anthropic_api_key()` in `lambda_handler.py`, cached per warm
-container). Terraform creates the **empty** secret only — the value is set
-out-of-band so it never lands in Terraform state or git:
+container). Terraform only references the parameter name and grants
+`ssm:GetParameter` on it — the value is set out-of-band so it never lands in
+Terraform state or git:
 
 ```bash
-aws secretsmanager put-secret-value \
+aws ssm put-parameter \
   --region eu-west-2 \
-  --secret-id pre-session-scanner-anthropic-api-key \
-  --secret-string "sk-ant-..."
+  --name /pre-session-scanner/anthropic-api-key \
+  --type SecureString \
+  --overwrite \
+  --value "sk-ant-..."
 ```
 
 Run that yourself (e.g. via Claude Code's `!` prefix) rather than pasting

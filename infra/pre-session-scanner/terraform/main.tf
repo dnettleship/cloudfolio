@@ -40,14 +40,14 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
 }
 
 resource "aws_iam_role_policy" "lambda_secrets" {
-  name = "${var.project}-secrets-read"
+  name = "${var.project}-api-key-read"
   role = aws_iam_role.lambda.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect   = "Allow"
-      Action   = "secretsmanager:GetSecretValue"
-      Resource = aws_secretsmanager_secret.anthropic_api_key.arn
+      Action   = "ssm:GetParameter"
+      Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${local.anthropic_api_key_parameter}"
     }]
   })
 }
@@ -72,12 +72,13 @@ resource "aws_iam_role_policy" "lambda_archive" {
   })
 }
 
-# ── Secrets ──────────────────────────────────────────────────────────────────
+# ── API key ──────────────────────────────────────────────────────────────────
 
-# Value is set out-of-band via `aws secretsmanager put-secret-value` — never
-# committed to Terraform state as a secret_version resource.
-resource "aws_secretsmanager_secret" "anthropic_api_key" {
-  name = "${var.project}-anthropic-api-key"
+# The key is a SecureString SSM parameter created out-of-band with
+# `aws ssm put-parameter` — Terraform only references its name, so the value
+# never lands in state or git. (Encrypted with the default aws/ssm key.)
+locals {
+  anthropic_api_key_parameter = "/${var.project}/anthropic-api-key"
 }
 
 # ── S3 (private — report archive) ──────────────────────────────────────────
@@ -109,8 +110,8 @@ resource "aws_lambda_function" "app" {
 
   environment {
     variables = {
-      ANTHROPIC_API_KEY_SECRET_NAME = aws_secretsmanager_secret.anthropic_api_key.name
-      ARCHIVE_BUCKET_NAME           = aws_s3_bucket.archive.bucket
+      ANTHROPIC_API_KEY_PARAMETER_NAME = local.anthropic_api_key_parameter
+      ARCHIVE_BUCKET_NAME              = aws_s3_bucket.archive.bucket
     }
   }
 }

@@ -14,7 +14,7 @@ CORS_HEADERS = {
     "Content-Type": "application/json",
 }
 
-_secrets_client = boto3.client("secretsmanager")
+_ssm_client = boto3.client("ssm")
 _s3_client = boto3.client("s3")
 _api_key_cache = None
 
@@ -24,8 +24,8 @@ ARCHIVE_LIST_LIMIT = 50
 def _get_anthropic_api_key() -> str:
     global _api_key_cache
     if _api_key_cache is None:
-        secret_name = os.environ["ANTHROPIC_API_KEY_SECRET_NAME"]
-        _api_key_cache = _secrets_client.get_secret_value(SecretId=secret_name)["SecretString"]
+        parameter_name = os.environ["ANTHROPIC_API_KEY_PARAMETER_NAME"]
+        _api_key_cache = _ssm_client.get_parameter(Name=parameter_name, WithDecryption=True)["Parameter"]["Value"]
     return _api_key_cache
 
 
